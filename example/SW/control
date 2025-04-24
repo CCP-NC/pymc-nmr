@@ -1,0 +1,11 @@
+print 1
+maxdistance 0.15
+maxvolume 0.001
+steps 15
+equilsteps 750
+check 5000
+temperature 1300
+relax
+move swap 1 30
+Al Si
+close
