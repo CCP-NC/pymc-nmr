@@ -3,6 +3,7 @@ import math
 from typing import List
 
 from ase import Atoms
+from ase.io import write
 
 from Energy import Energy
 from Field import Field
@@ -129,9 +130,6 @@ class BasinHop:
     
     def run(self, spec: Species, fld: Field, job: JobControl, stats: Statistics, type_stats: TypeStatistics, basin, numSteps, cycle, initialise, out_stream):
 
-       
-        volRatio = np.zeros(6, dtype=np.float64)
-
         totalEnergy = []
         checkEnergy = Energy()
 
@@ -139,13 +137,6 @@ class BasinHop:
         for i in range(job.num_boxes):
             stats[i].zero(1000, 0.0, False)
             type_stats[i].zero_types(spec.get_num_species(), False) 
-
-        xyzStream = None
-
-        if job.dumpArchive:
-            out_stream.write(f"\n archive frequency {job.archiveFrequency}\n")
-            xyzStream = open("mc_archive.xyz", "w")
-            
 
         beta = 1.0 / (job.temperature * BOLTZMANN)
     
@@ -158,6 +149,9 @@ class BasinHop:
            
             totalEnergy.append(energy_new)
             totalEnergy[ibox].print_energy(ibox, out_stream)
+
+            if job.restart == False:
+                write(filename="archive.xyz", images=basin, format="extxyz")
 
         numSteps = 1
 
@@ -173,31 +167,21 @@ class BasinHop:
                 stats[ib].sample(job.equilSteps, numSteps, totalEnergy[ib], basin[ib].get_volume(), basin[ib].get_cell().flatten(), out_stream)
                 type_stats[ib].sample_types(numSteps, job.equilSteps, basin[ib], spec)
 
-                #if self.numSemiWidom > 0:
-                #    chem_stats.sample_semi_widom(chemPotAtom1, chemPotAtom2, numSemiWidom, numSteps, job.equilSteps)
-
-            
-
                 if numSteps % job.printFreq == 0:
                     stats[ib].check_point(numSteps, job.equilSteps, 0.0, out_stream)
                     type_stats[ib].check_point_types(spec, out_stream)
-                    #if self.numSemiWidom > 0:
-                    #    chem_stats[ib].check_point_semi_widom(self.semiWidomType1, self.semiWidomType2, self.numSemiWidom, spec, job.temperature, out_stream)
+                    
+            if job.dumpArchive and numSteps % job.archiveFrequency == 0:
+                write(filename="archive.xyz", images=basin, format="extxyz", append=True)
+            
 
-                if job.dumpArchive and numSteps % job.archiveFrequency == 0:
-                    basin[ib].writeBasisXYZ(spec, xyzStream)
-                    xyzStream.flush()
-
-                    with open(f"restart", "w") as restartStream:
-                        basin[ib].dump_basis(spec, 0.0, 0.0, job.mc_steps, restartStream)
-
+                   
             #if numSteps > job.equilSteps and job.sampleBasin and numSteps % job.sampleBasinFreq == 0:
             #    basin[cycle].samplePositions()
 
-            if numSteps % job.sanityCheckFreq == 0:
-                restart_stream = open("restart", "w") 
-            
-                
+            if numSteps % job.sanityCheckFreq == 0: 
+                write(filename="restart.xyz", images=basin, format="extxyz")
+              
                 for ib in range(job.num_boxes):
                     checkEnergy = fld.calculate_energy(basin[ibox])
 
@@ -208,11 +192,6 @@ class BasinHop:
                         out_stream.write(f" total diff {eDiff.totalEnergy:.10e}\n")
                         
                     totalEnergy[ib] = checkEnergy
-
-                    #basin[ib].dump_basis(spec, 0.0, 0.0, numSteps, restart_stream)
-
-                restart_stream.flush()
-                restart_stream.close()
 
             numSteps += 1
 
@@ -253,11 +232,8 @@ class BasinHop:
             out_stream.write(f"\n forward semi-widom mutations {self.forwardSemiWidom}\n")
             out_stream.write(f" backward semi-widom mutations {self.backwardSemiWidom}\n")
 
-        #if self.attemptedGCFragRemoves > 0:
-        #    out_stream.write(f"\n the number of fragment removes {self.successFulGCFragRemoves} attempted {self.attemptedGCFragRemoves}\n")
-        #if self.attemptedGCFragInsert > 0:
-        #    out_stream.write(f"\n the number of fragment inserts {self.successFulGCFragInsert} attempted {self.attemptedGCFragInsert}\n")
-
+        write(filename="restart.xyz", images=basin, format="extxyz")
+        
         out_stream.flush()
 
 

@@ -36,6 +36,7 @@ class JobControl:
         self.transmuteChemPot = []
         self.volMoveSymmetry = 0
         self.relax_structure = False
+        self.restart = False
         self.max_force = 1.0e-3
         
     def check_job_control(self, out_stream):
@@ -90,6 +91,8 @@ class JobControl:
                 self.equilSteps = int(words[1])
             elif keyWord == "relax":
                 self.relax_structure = True
+            elif keyWord == "restart":
+                self.restart = True
             elif keyWord == "maxforce":
                 self.max_force = float(words[1])
             elif keyWord == "move":
