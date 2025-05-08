@@ -57,7 +57,7 @@ def main():
 
     # Read data from basis file in xyz format
     try:
-        basins = read(basisFileName, index=":")
+        basins = read(basisFileName, format="extxyz")
         print("the number of datsets read in", len(basins))
     except FileNotFoundError:
         out_stream.write("\n*** could not find configuration file: basin.xyz \n")
@@ -68,22 +68,15 @@ def main():
     else:
         mc.initialise(spec, job, out_stream)
 
-    #for ib in range(job.num_boxes):
-    #    basins[ib].freeze_atom_types(spec, job.frozen_types)
-
     #########################################################################################################
     # start the dimulation
     #########################################################################################################
 
     num_cycles = job.num_cycles
 
-    stats = []
-    type_stats = []
+    stats = Statistics()
+    type_stats = TypeStatistics()
      
-    for _ in range(num_cycles):
-        stats.append(Statistics())
-        type_stats.append(TypeStatistics())
-
     for cycle in range(num_cycles):
 
         
@@ -112,8 +105,8 @@ def main():
         finish_time = time.time()
         diff = finish_time - start_time
 
-        stats[cycle].last_summary(out_stream, num_steps)
-        type_stats[cycle].last_summary_types(spec, out_stream)
+        stats.last_summary(out_stream, num_steps)
+        type_stats.last_summary_types(spec, out_stream)
 
         out_stream.write("\n\n" + " *" * 53 + "\n")
         out_stream.write(f"\n time to Monte Carlo simulation : {diff:.3f} seconds\n")

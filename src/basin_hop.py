@@ -147,57 +147,51 @@ class BasinHop:
 
         self._createMCMoves(job)
     
-    def run(self, spec: Species, fld: Field, job: JobControl, stats: Statistics, type_stats: TypeStatistics, basin, numSteps, cycle, initialise, out_stream):
+    def run(self, spec: Species, fld: Field, job: JobControl, stats: Statistics, type_stats: TypeStatistics, basin: Atoms, numSteps, cycle, initialise, out_stream):
 
-        totalEnergy = []
+        totalEnergy = Energy()
         checkEnergy = Energy()
 
         # Initiate the statistics
-        for i in range(job.num_boxes):
-            stats[i].zero(1000, 0.0, False)
-            type_stats[i].zero_types(spec.get_num_species(), False) 
+        stats.zero(1000, 0.0, False)
+        type_stats.zero_types(spec.get_num_species(), False) 
 
         beta = 1.0 / (job.temperature * BOLTZMANN)
     
         out_stream.write(f"\n beta (1/KT) {beta:.8f}\n")
         
-        for ibox in range(job.num_boxes):
-            fld.setup()
+        fld.setup()
 
-            energy_new = fld.calculate_energy_relax(basin[ibox], job.relmethod, job.relsteps, job.reltol)
+        energy_new = fld.calculate_energy_relax(basin, job.relmethod, job.relsteps, job.reltol)
            
-            totalEnergy.append(energy_new)
-            totalEnergy[ibox].print_energy(ibox, out_stream)
+        totalEnergy.print_energy(1, out_stream)
 
-            if job.restart == False:
-                write(filename="archive.xyz", images=basin, format="extxyz")
+        if job.restart == False:
+            write(filename="archive.xyz", images=basin, format="extxyz")
 
         numSteps = 1
 
         while numSteps <= job.mcSteps:
-
-            ibox = int(job.num_boxes * np.random.random())
 
             choice = int(self.numMCMoves * np.random.random())
 
             selection = self.mcMoveList[choice]
 
             if selection == 1:
-                basin[ibox] = self.run_md(basin[ibox], fld, totalEnergy[ibox], job, beta, out_stream)
+                basin = self.run_md(basin, fld, totalEnergy, job, beta, out_stream)
 
             elif selection == 2:
-                basin[ibox] = self.swapAtoms_relax(basin[ibox], fld, totalEnergy[ibox], job, beta, out_stream)
+                basin = self.swapAtoms_relax(basin, fld, totalEnergy, job, beta, out_stream)
 
-            energy_new = fld.calculate_energy(basin[ibox])
+            energy_new = fld.calculate_energy(basin)
             print("energy in main routine ", energy_new.totalEnergy)
 
-            for ib in range(job.num_boxes):
-                stats[ib].sample(job.equilSteps, numSteps, totalEnergy[ib], basin[ib].get_volume(), basin[ib].get_cell().flatten(), out_stream)
-                type_stats[ib].sample_types(numSteps, job.equilSteps, basin[ib], spec)
+            stats.sample(job.equilSteps, numSteps, totalEnergy, basin.get_volume(), basin.get_cell().flatten(), out_stream)
+            type_stats.sample_types(numSteps, job.equilSteps, basin, spec)
 
-                if numSteps % job.printFreq == 0:
-                    stats[ib].check_point(numSteps, job.equilSteps, 0.0, out_stream)
-                    type_stats[ib].check_point_types(spec, out_stream)
+            if numSteps % job.printFreq == 0:
+                stats.check_point(numSteps, job.equilSteps, 0.0, out_stream)
+                type_stats.check_point_types(spec, out_stream)
                     
             if job.dumpArchive and numSteps % job.archiveFrequency == 0:
                 write(filename="archive.xyz", images=basin, format="extxyz", append=True)
@@ -210,16 +204,15 @@ class BasinHop:
             if numSteps % job.sanityCheckFreq == 0: 
                 write(filename="restart.xyz", images=basin, format="extxyz")
               
-                for ib in range(job.num_boxes):
-                    checkEnergy = fld.calculate_energy(basin[ibox])
+                checkEnergy = fld.calculate_energy(basin)
 
-                    eDiff = checkEnergy.get_total_energy() - totalEnergy[ib].get_total_energy()
+                eDiff = checkEnergy.get_total_energy() - totalEnergy.get_total_energy()
 
-                    if abs(eDiff) > 1.0e-6:
-                        out_stream.write(f"\n sanity check failed on iteration {numSteps} !!!!!!!\n")
-                        out_stream.write(f" total diff {eDiff.totalEnergy:.10e}\n")
+                if abs(eDiff) > 1.0e-6:
+                    out_stream.write(f"\n sanity check failed on iteration {numSteps} !!!!!!!\n")
+                    out_stream.write(f" total diff {eDiff.totalEnergy:.10e}\n")
                         
-                    totalEnergy[ib] = checkEnergy
+                totalEnergy = checkEnergy
 
             numSteps += 1
 
@@ -228,15 +221,14 @@ class BasinHop:
         out_stream.write(" *****************************************************************************************************\n")
 
         
-        for ibox in range(job.num_boxes):
-            final_energy = Energy()
-            final_energy = fld.calculate_energy(basin[ibox])
+        final_energy = Energy()
+        final_energy = fld.calculate_energy(basin)
 
-            final_energy.print_energy(ibox, out_stream)
+        final_energy.print_energy(1, out_stream)
 
-            out_stream.write("\n final sanity check")
-            checkEnergy = final_energy - totalEnergy[ibox]
-            checkEnergy.print_energy(cycle, out_stream)
+        out_stream.write("\n final sanity check")
+        checkEnergy = final_energy - totalEnergy
+        checkEnergy.print_energy(cycle, out_stream)
 
         out_stream.write("\n\n *****************************************************************************************************\n")
         out_stream.write(" Summary of simulation\n")
