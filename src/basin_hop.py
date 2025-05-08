@@ -217,7 +217,7 @@ class BasinHop:
             numSteps += 1
 
         out_stream.write("\n\n *****************************************************************************************************\n")
-        out_stream.write(f" final energy of system containing {basin[cycle].get_number_of_atoms()} atoms\n")
+        out_stream.write(f" final energy of system containing {len(basin)} atoms\n")
         out_stream.write(" *****************************************************************************************************\n")
 
         
