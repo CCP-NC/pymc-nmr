@@ -1,6 +1,8 @@
 
 import numpy as np
 
+from ase.units import fs
+
 class JobControl:
     def __init__(self):
         self.num_cycles = 1
@@ -21,6 +23,7 @@ class JobControl:
         self.printFreq = 0
         self.dumpArchive = False
         self.archiveFrequency = 1000
+        self.save_downhill = False
         self.equilSteps = 0
         self.atomMoveFreq = 0
         self.moveTypes = []
@@ -38,6 +41,18 @@ class JobControl:
         self.relax_structure = False
         self.restart = False
         self.max_force = 1.0e-3
+
+        #md parameters
+        self.mdMoveFreq = 0
+        self.timestep = 2.0 * fs
+        self.mdtemperature_K = 1000
+        self.mdfriction = 0.01 / fs
+        self.mdsteps = 1000
+
+        #relaxation parameters
+        self.relmethod = "lbfgs"
+        self.relsteps = 1000
+        self.reltol = 1e-3
         
     def check_job_control(self, out_stream):
         pass  # Implement parameter check logic if needed
@@ -93,6 +108,8 @@ class JobControl:
                 self.relax_structure = True
             elif keyWord == "restart":
                 self.restart = True
+            elif keyWord == "savedownhill":
+                self.save_downhill = True
             elif keyWord == "maxforce":
                 self.max_force = float(words[1])
             elif keyWord == "move":
@@ -123,6 +140,8 @@ class JobControl:
                         self.mutateType1.append(words[0])
                         self.mutateType2.append(words[1])
                         self.transmuteChemPot.append(float(words[2]))
+                elif subWord == "moldyn":
+                    self.mdMoveFreq = int(words[2])
             elif keyWord == "symmetry":
                 subWord = words[1]
                 if subWord == "cubic":
@@ -131,4 +150,18 @@ class JobControl:
                     self.volMoveSymmetry = 1
                 elif subWord == "orthorhombic":
                     self.volMoveSymmetry = 2
+            elif keyWord == "timestep":
+                self.timestep = float(words[1])
+            elif keyWord == "mdtemperature":
+                self.mdtemperature_K = float(words[1])
+            elif keyWord == "mdfriction":
+                self.mdfriction = float(words[1])
+            elif keyWord == "mdsteps":
+                self.mdsteps = int(words[1])
+            elif keyWord == "relmethod":
+                self.relmethod = words[1]
+            elif keyWord == "relsteps":
+                self.relsteps = int(words[1])
+            elif keyWord == "reltol":
+                self.reltol = float(words[1]) 
 

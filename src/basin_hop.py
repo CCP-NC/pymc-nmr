@@ -24,8 +24,9 @@ class BasinHop:
 
         #atom swaps
         self.numSwaps = 0
-        self.successfulSwaps = 0
+        self.successfulDownSwaps = 0
         self.attemptedSwaps = 0
+        self.successfulUpSwaps = 0
         self.swapType1 = []
         self.swapType2 = []
 
@@ -46,8 +47,8 @@ class BasinHop:
         self.semiWidomType1 = None
         self.semiWidomType2 = None
 
-        #fragments
-        self.noFragments = 0
+        
+        self.md_runs = 0
 
     def _setupBasinHop(self, spec: Species, job: JobControl, out_stream):
         numSpec = spec.get_num_species()
@@ -123,10 +124,28 @@ class BasinHop:
                     out_stream.flush()
                     exit(EXIT_FAILURE)
 
+    def _createMCMoves(self, job):
+        self.numMCMoves = 0
+
+        self.numMCMoves = (job.mdMoveFreq + job.swapFrequency)
+
+        # Allocate mcMoveList array
+        self.mcMoveList = np.zeros(self.numMCMoves, np.dtype('uint32'))
+
+        j = 0
+        for i in range(job.mdMoveFreq):
+            self.mcMoveList[j] = 1
+            j += 1
+
+        for i in range(job.swapFrequency):
+            self.mcMoveList[j] = 2
+            j += 1
 
     def initialise(self, spec, job, out_stream):
         #setup the BasinHopWalker calculation and the moves
         self._setupBasinHop(spec, job, out_stream)
+
+        self._createMCMoves(job)
     
     def run(self, spec: Species, fld: Field, job: JobControl, stats: Statistics, type_stats: TypeStatistics, basin, numSteps, cycle, initialise, out_stream):
 
@@ -145,7 +164,7 @@ class BasinHop:
         for ibox in range(job.num_boxes):
             fld.setup()
 
-            energy_new = fld.calculate_energy_relax(basin[ibox])
+            energy_new = fld.calculate_energy_relax(basin[ibox], job.relmethod, job.relsteps, job.reltol)
            
             totalEnergy.append(energy_new)
             totalEnergy[ibox].print_energy(ibox, out_stream)
@@ -159,9 +178,18 @@ class BasinHop:
 
             ibox = int(job.num_boxes * np.random.random())
 
-            basin[ibox] = self.swapAtoms_relax(basin[ibox], fld, totalEnergy[ibox], job, beta, out_stream)
+            choice = int(self.numMCMoves * np.random.random())
+
+            selection = self.mcMoveList[choice]
+
+            if selection == 1:
+                basin[ibox] = self.run_md(basin[ibox], fld, totalEnergy[ibox], job, beta, out_stream)
+
+            elif selection == 2:
+                basin[ibox] = self.swapAtoms_relax(basin[ibox], fld, totalEnergy[ibox], job, beta, out_stream)
+
             energy_new = fld.calculate_energy(basin[ibox])
-            print("energy after swap routine ", energy_new.totalEnergy)
+            print("energy in main routine ", energy_new.totalEnergy)
 
             for ib in range(job.num_boxes):
                 stats[ib].sample(job.equilSteps, numSteps, totalEnergy[ib], basin[ib].get_volume(), basin[ib].get_cell().flatten(), out_stream)
@@ -217,8 +245,10 @@ class BasinHop:
         out_stream.write("\n")
        
         if self.numSwaps > 0:
-            swapRatio = self.successfulSwaps / self.attemptedSwaps
-            out_stream.write(f"\n swaps : attempted, successful and ratio {self.attemptedSwaps} {self.successfulSwaps} {swapRatio:.10e}\n")
+            swapRatio = (self.successfulUpSwaps + self.successfulDownSwaps) / self.attemptedSwaps
+            successfulSwaps = self.successfulUpSwaps + self.successfulDownSwaps
+            out_stream.write(f"\n swaps : attempted, successful and ratio {self.attemptedSwaps} {successfulSwaps} {swapRatio:.10e}\n")
+            out_stream.write(f"\n swaps : Downhill and Uphill {self.successfulDownSwaps} {self.successfulUpSwaps} \n")
 
         if self.numTrans > 0:
             forwardRatio = self.forwardMutations / self.attemptForwardMutations
@@ -231,6 +261,9 @@ class BasinHop:
         if self.numSemiWidom > 0:
             out_stream.write(f"\n forward semi-widom mutations {self.forwardSemiWidom}\n")
             out_stream.write(f" backward semi-widom mutations {self.backwardSemiWidom}\n")
+
+        if self.md_runs > 0:
+            out_stream.write(f"\n the number of MD runs {self.md_runs}\n")
 
         write(filename="restart.xyz", images=basin, format="extxyz")
         
@@ -264,7 +297,7 @@ class BasinHop:
             for j in range(3):
                 cell[i,j] = basin.cell[i,j]
         new_basin = Atoms(symbols = symbols, positions=old_pos, cell= cell, pbc=True)
-        print("swap start", basin.get_potential_energy())
+        new_basin.wrap()
 
         #print("swapping", atm1, atm2, basin.chem_symbols[atm1], basin.chem_symbols[atm2])
         print("swapping ", atm1, basin.symbols[atm1], atm2, basin.symbols[atm2])
@@ -273,10 +306,8 @@ class BasinHop:
         self.swap_atom_types(new_basin, atm1, atm2)
 
         new_energy = Energy()
-        #calculating energy does not take into account pair potential methods
-        #new_energy = fld.calculate_swap_energy(basin.pos_r, basin.lat_vector, basin.rcp_vector, basin.charge, 
-        #                    basin.atm_label, basin.chem_symbols, basin.frozen, basin.number_of_atoms, old_energy)
-        new_energy = fld.calculate_energy_relax(new_basin)
+       
+        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol)
         
         deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
         deltaVB = beta * deltaV
@@ -288,7 +319,12 @@ class BasinHop:
         
         if accept:
             totalEnergy.totalEnergy = new_energy.totalEnergy
-            self.successfulSwaps += 1
+            if deltaV < 0.0:
+                self.successfulDownSwaps += 1
+                if job.save_downhill:
+                    write(filename="downhill.xyz", images=basin, format="extxyz", append=True)
+            else:
+                self.successfulUpSwaps += 1
             print("swap accepted")
             return new_basin
         else:
@@ -302,8 +338,40 @@ class BasinHop:
             print("pos atm2 ", basin.symbols[atm2], basin.positions[atm2,:])
             return basin
         
-        #new_energy = fld.calculate_energy_relax(basin)
-        #print("potential energy before leaving ", new_energy.get_total_energy())
+    def run_md(self, basin: Atoms, fld: Field, totalEnergy: Energy, job: JobControl, beta: np.float64, out_stream):
+        
+        self.md_runs += 1
+
+        j = int(np.random.random() * self.numSwaps)
+        
+        
+        old_pos = np.zeros((len(basin), 3), dtype=np.float64)
+        symbols = []
+        cell = np.zeros((3,3), dtype=np.float64)
+        
+        #np.copyto(old_pos, basin.positions)
+        for i in range(len(basin)):
+            symbols.append(basin.symbols[i])
+            for j in range(3):
+                old_pos[i,j] = basin.positions[i,j]
+        for i in range(3):
+            for j in range(3):
+                cell[i,j] = basin.cell[i,j]
+        new_basin = Atoms(symbols = symbols, positions=old_pos, cell= cell, pbc=True)
+        new_basin.wrap()
+
+        #run an md simulation
+        fld.run_md(new_basin, job.timestep, job.mdtemperature_K, job.mdfriction, job.mdsteps)
+
+        new_energy = Energy()
+        #the energy needs to be relaxed to get the "new" energy
+        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol)
+        
+        totalEnergy.totalEnergy = new_energy.totalEnergy
+        
+        return new_basin
+
+       
     def transmutateAtoms(self, basin: Atoms, fld: Field, totalEnergy: Energy, spec: Species, beta: np.float64, out_stream):
 
         old_energy = totalEnergy

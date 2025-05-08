@@ -5,6 +5,9 @@ import numpy as np
 from ase.filters import UnitCellFilter
 from ase import Atoms
 from ase.optimize import BFGS, FIRE, LBFGS
+from ase.md import VelocityVerlet, langevin
+from ase.units import fs
+
 from janus_core.helpers.mlip_calculators import choose_calculator
 
 from Energy import Energy
@@ -83,22 +86,42 @@ class Field:
         
         return total_energy
 
-    def calculate_energy_relax(self, atoms: Atoms):
+    def calculate_energy_relax(self, atoms: Atoms, relmethod, relsteps, reltol):
         
         total_energy = Energy()
-        max_force = 1e-3
-        max_steps = 1000
        
         atoms.calc = self.janCalc
 
-        
-        flag = LBFGS(UnitCellFilter(atoms, mask=[1,1,1,1,1,1])).run(fmax=max_force, steps=max_steps)
+        if relmethod == "lbfgs":
+            flag = LBFGS(UnitCellFilter(atoms, mask=[1,1,1,1,1,1])).run(fmax=reltol, steps=relsteps)
+        elif relmethod == "fire":
+            flag = FIRE(UnitCellFilter(atoms, mask=[1,1,1,1,1,1])).run(fmax=reltol, steps=relsteps)
+        elif relmethod == "bfgs":
+            flag = LBFGS(UnitCellFilter(atoms, mask=[1,1,1,1,1,1])).run(fmax=reltol, steps=relsteps)
+        else:
+            print("unrecognised relaxation method")
+            exit()
 
         if flag:
             total_energy.totalEnergy = atoms.get_potential_energy()
             print("field final energy ", atoms.get_potential_energy())
         else:
             total_energy.totalEnergy = 1.0e6
+        
+        return total_energy
+    
+    def run_md(self, atoms: Atoms, timestep, mdtemperature_K, mdfriction, mdsteps):
+        
+        print("moldyn")
+        total_energy = Energy()
+        
+        atoms.calc = self.janCalc
+
+        #dyn = VelocityVerlet(atoms, timestep=2.0 * fs, temperature_K=1000)
+        dyn = langevin.Langevin(atoms, timestep=timestep, temperature_K=mdtemperature_K, friction=mdfriction)
+        dyn.run(mdsteps)
+
+        total_energy.totalEnergy = atoms.get_potential_energy()
         
         return total_energy
 
