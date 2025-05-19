@@ -4,18 +4,15 @@ import numpy as np
 import os
 import sys
 
-from ase import Atoms
-from ase.io import write, read, iread
-from ase.optimize import BFGS, FIRE, LBFGS
-
 from datetime import datetime
 
+from config import Config
 from JobControl import JobControl
 from Species import Species
 from Statistics import Statistics, TypeStatistics
 from Field import Field
 from basin_hop import BasinHop
-
+from airss_style import AirssStyle
 from monte_carlo import MonteCarlo
 
 
@@ -30,6 +27,7 @@ def main():
 
     bh = BasinHop()
     mc = MonteCarlo()
+    ai = AirssStyle()
 
     basisFileName = "basin.xyz"
     fieldFileName = "potentials"
@@ -56,17 +54,27 @@ def main():
         sys.exit(1)
 
     # Read data from basis file in xyz format
+    basin = Config()
+    restart_iteration = 0
+    restart_time = 0.0 
+    restart_energy = 0.0
     try:
-        basins = read(basisFileName, format="extxyz")
-        print("the number of datsets read in", len(basins))
+        instream = open(basisFileName, "r")
+        restart_iteration, restart_time, restart_energy = basin.read_config(instream)
+        basin.setup_configuration(spec)
     except FileNotFoundError:
         out_stream.write("\n*** could not find configuration file: basin.xyz \n")
         sys.exit(1)
 
-    if job.relax_structure:
+    if job.structure_method == "basinhop":
         bh.initialise(spec, job, out_stream)
-    else:
+    elif job.structure_method == "airss":
+        ai.initialise(spec, job, out_stream)
+    elif job.structure_method == "monte":
         mc.initialise(spec, job, out_stream)
+    else:
+        out_stream.write("\n*** unrecognised structure search method \n")
+        sys.exit(1)
 
     #########################################################################################################
     # start the dimulation
@@ -78,8 +86,6 @@ def main():
     type_stats = TypeStatistics()
      
     for cycle in range(num_cycles):
-
-        
         
         num_steps = 0
 
@@ -89,18 +95,29 @@ def main():
         # Do the MC calculation
         initialise = True
 
-        if job.relax_structure:
-            out_stream.write("\n\n" + " *" * 53 + "\n")
-            out_stream.write(" Basin Hopping Simulation. Cycle : " + str(cycle) + "\n")
-            out_stream.write(" *" * 53 + "\n")
-
-            bh.run(spec, fld, job, stats, type_stats, basins, num_steps, cycle, initialise, out_stream)
-        else:
+        if job.structure_method == "monte":
             out_stream.write("\n\n" + " *" * 53 + "\n")
             out_stream.write(" Monte Carlo Simulation. Cycle : " + str(cycle) + "\n")
             out_stream.write(" *" * 53 + "\n")
 
-            mc.run(spec, fld, job, stats, type_stats, basins, num_steps, cycle, initialise, out_stream)
+            mc.run(spec, fld, job, stats, type_stats, basin, num_steps, cycle, initialise, out_stream)
+        
+        elif job.structure_method == "airss":
+            out_stream.write("\n\n" + " *" * 53 + "\n")
+            out_stream.write(" AIRSS Style Simulation. Cycle : " + str(cycle) + "\n")
+            out_stream.write(" *" * 53 + "\n")
+
+            ai.run(spec, fld, job, stats, type_stats, basin, num_steps, cycle, initialise, restart_iteration, 
+                   restart_energy, out_stream)
+        else:
+            
+            out_stream.write("\n\n" + " *" * 53 + "\n")
+            out_stream.write(" Basin Hopping Simulation. Cycle : " + str(cycle) + "\n")
+            out_stream.write(" *" * 53 + "\n")
+
+            bh.run(spec, fld, job, stats, type_stats, basin, num_steps, cycle, initialise, restart_iteration, restart_energy, 
+                   out_stream)
+           
 
         finish_time = time.time()
         diff = finish_time - start_time
@@ -112,10 +129,6 @@ def main():
         out_stream.write(f"\n time to Monte Carlo simulation : {diff:.3f} seconds\n")
         out_stream.write("\n *** Monte Carlo Finished. Writing restart\n")
         out_stream.flush()
-
-        #with open("restart", "w") as restart_stream:
-        #    for ib in range(job.num_boxes):
-        #        basins[cycle].dump_basis(spec, md_time, 0.0, job.mc_steps, restart_stream)
 
     out_stream.flush()
     out_stream.close() #end of simulation

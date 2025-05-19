@@ -8,6 +8,7 @@ from ase.io import write
 from Energy import Energy
 from Field import Field
 from Species import Species
+from config import Config
 from JobControl import JobControl
 from Statistics import Statistics, TypeStatistics
 
@@ -147,7 +148,8 @@ class BasinHop:
 
         self._createMCMoves(job)
     
-    def run(self, spec: Species, fld: Field, job: JobControl, stats: Statistics, type_stats: TypeStatistics, basin: Atoms, numSteps, cycle, initialise, out_stream):
+    def run(self, spec: Species, fld: Field, job: JobControl, stats: Statistics, type_stats: TypeStatistics, basin: Config, numSteps, cycle, 
+            initialise, restart_iteration, restart_energy, out_stream):
 
         totalEnergy = Energy()
         checkEnergy = Energy()
@@ -162,14 +164,21 @@ class BasinHop:
         
         fld.setup()
 
-        energy_new = fld.calculate_energy_relax(basin, job.relmethod, job.relsteps, job.reltol)
+        new_basin = basin.create_atoms_object()
+        totalEnergy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol)
+        basin.update_from_atoms(new_basin)
            
         totalEnergy.print_energy(1, out_stream)
 
+        
         if job.restart == False:
-            write(filename="archive.xyz", images=basin, format="extxyz")
-
+            archive_io = open("archive.xyz", "w")
+            basin.write_config(archive_io, total_energy=totalEnergy.get_total_energy(), iteration=0)
+            archive_io.close()
+        
         numSteps = 1
+        if job.restart:
+            numSteps = restart_iteration
 
         while numSteps <= job.mcSteps:
 
@@ -178,15 +187,18 @@ class BasinHop:
             selection = self.mcMoveList[choice]
 
             if selection == 1:
-                basin = self.run_md(basin, fld, totalEnergy, job, beta, out_stream)
+                self.run_md(basin, fld, totalEnergy, job, beta, out_stream)
 
             elif selection == 2:
-                basin = self.swapAtoms_relax(basin, fld, totalEnergy, job, beta, out_stream)
+                self.swapAtoms_relax(basin, fld, totalEnergy, job, beta, out_stream)
 
-            energy_new = fld.calculate_energy(basin)
+            new_basin = basin.create_atoms_object()
+            energy_new = fld.calculate_energy(new_basin)
+            basin.update_from_atoms(new_basin)
+            
             print("energy in main routine ", energy_new.totalEnergy)
 
-            stats.sample(job.equilSteps, numSteps, totalEnergy, basin.get_volume(), basin.get_cell().flatten(), out_stream)
+            stats.sample(job.equilSteps, numSteps, totalEnergy, basin.get_volume(), basin.vectors.flatten(), out_stream)
             type_stats.sample_types(numSteps, job.equilSteps, basin, spec)
 
             if numSteps % job.printFreq == 0:
@@ -194,17 +206,18 @@ class BasinHop:
                 type_stats.check_point_types(spec, out_stream)
                     
             if job.dumpArchive and numSteps % job.archiveFrequency == 0:
-                write(filename="archive.xyz", images=basin, format="extxyz", append=True)
-            
-
-                   
-            #if numSteps > job.equilSteps and job.sampleBasin and numSteps % job.sampleBasinFreq == 0:
-            #    basin[cycle].samplePositions()
+                archive_io = open("archive.xyz", "a")
+                basin.write_config(archive_io, total_energy=totalEnergy.get_total_energy(), iteration=numSteps)
+                archive_io.close()
 
             if numSteps % job.sanityCheckFreq == 0: 
-                write(filename="restart.xyz", images=basin, format="extxyz")
+                restart_io = open("restart.xyz", "w")
+                basin.write_config(restart_io, total_energy=totalEnergy.get_total_energy(), iteration=numSteps)
+                restart_io.close()
               
-                checkEnergy = fld.calculate_energy(basin)
+                new_basin = basin.create_atoms_object()
+                checkEnergy = fld.calculate_energy(new_basin)
+                basin.update_from_atoms(new_basin)
 
                 eDiff = checkEnergy.get_total_energy() - totalEnergy.get_total_energy()
 
@@ -217,12 +230,14 @@ class BasinHop:
             numSteps += 1
 
         out_stream.write("\n\n *****************************************************************************************************\n")
-        out_stream.write(f" final energy of system containing {len(basin)} atoms\n")
+        out_stream.write(f" final energy of system containing {basin.natoms} atoms\n")
         out_stream.write(" *****************************************************************************************************\n")
 
         
         final_energy = Energy()
-        final_energy = fld.calculate_energy(basin)
+        new_basin = basin.create_atoms_object()
+        final_energy = fld.calculate_energy(new_basin)
+        basin.update_from_atoms(new_basin)
 
         final_energy.print_energy(1, out_stream)
 
@@ -257,53 +272,43 @@ class BasinHop:
         if self.md_runs > 0:
             out_stream.write(f"\n the number of MD runs {self.md_runs}\n")
 
-        write(filename="restart.xyz", images=basin, format="extxyz")
+        restart_io = open("restart.xyz", "w")
+        basin.write_config(restart_io, total_energy=totalEnergy.get_total_energy(), iteration=numSteps)
+        restart_io.close()
         
         out_stream.flush()
 
 
-    def swapAtoms_relax(self, basin: Atoms, fld: Field, totalEnergy: Energy, job: JobControl, beta: np.float64, out_stream):
+    def swapAtoms_relax(self, basin: Config, fld: Field, totalEnergy: Energy, job: JobControl, beta: np.float64, out_stream):
         
         self.attemptedSwaps += 1
 
         j = int(np.random.random() * self.numSwaps)
+        print("swap selection ",j," ", self.numSwaps,self.swapType1[j],self.swapType2[j])
         
-        atm1 = self.select_atom_of_type(basin, self.swapType1[j])
-        atm2 = self.select_atom_of_type(basin, self.swapType2[j])
+        atm1 = basin.select_atom_of_type(self.swapType1[j])
+        atm2 = basin.select_atom_of_type(self.swapType2[j])
 
         if atm1 == -1 or atm2 == -1:
             return
 
         old_energy = Energy()
         old_energy.totalEnergy = totalEnergy.totalEnergy
-        old_pos = np.zeros((len(basin), 3), dtype=np.float64)
-        symbols = []
-        cell = np.zeros((3,3), dtype=np.float64)
         
-        #np.copyto(old_pos, basin.positions)
-        for i in range(len(basin)):
-            symbols.append(basin.symbols[i])
-            for j in range(3):
-                old_pos[i,j] = basin.positions[i,j]
-        for i in range(3):
-            for j in range(3):
-                cell[i,j] = basin.cell[i,j]
-        new_basin = Atoms(symbols = symbols, positions=old_pos, cell= cell, pbc=True)
-        new_basin.wrap()
 
         #print("swapping", atm1, atm2, basin.chem_symbols[atm1], basin.chem_symbols[atm2])
-        print("swapping ", atm1, basin.symbols[atm1], atm2, basin.symbols[atm2])
-        print("pos atm1 ", basin.symbols[atm1], basin.positions[atm1,:])
-        print("pos atm2 ", basin.symbols[atm2], basin.positions[atm2,:])
-        self.swap_atom_types(new_basin, atm1, atm2)
+        print("swapping ", atm1, basin.symbol[atm1], atm2, basin.symbol[atm2])
+        print("pos atm1 ", basin.symbol[atm1], basin.pos[atm1,:])
+        print("pos atm2 ", basin.symbol[atm2], basin.pos[atm2,:])
+        basin.swap_atom_positions(atm1, atm2)
 
         new_energy = Energy()
-       
+        new_basin = basin.create_atoms_object()
         new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol)
         
         deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
         deltaVB = beta * deltaV
-        print("swap ", old_energy.get_total_energy(), new_energy.get_total_energy(), deltaV, deltaVB)
+        print("swap ", old_energy.get_total_energy(), new_energy.get_total_energy()," ", deltaV," ", beta, " ", deltaVB)
         accept = False
         arg = np.random.random()
         if arg < np.exp(-deltaVB):
@@ -314,43 +319,21 @@ class BasinHop:
             if deltaV < 0.0:
                 self.successfulDownSwaps += 1
                 if job.save_downhill:
-                    write(filename="downhill.xyz", images=basin, format="extxyz", append=True)
+                    write(filename="downhill.xyz", images=new_basin, format="extxyz", append=True)
             else:
                 self.successfulUpSwaps += 1
             print("swap accepted")
-            return new_basin
+            basin.update_from_atoms(new_basin)
         else:
-            #np.copyto(basin.positions, old_pos)
-            #self.swap_atom_types(basin, atm1, atm2)
-            #for i in range(len(basin)):
-            #    for j in range(3):
-            #        basin.positions[i,j] = old_pos[i,j]
-            print("swap failed", new_basin.get_potential_energy())
-            print("pos atm1 ", basin.symbols[atm1], basin.positions[atm1,:])
-            print("pos atm2 ", basin.symbols[atm2], basin.positions[atm2,:])
-            return basin
+            basin.swap_atom_positions(atm1, atm2)
         
-    def run_md(self, basin: Atoms, fld: Field, totalEnergy: Energy, job: JobControl, beta: np.float64, out_stream):
+    def run_md(self, basin: Config, fld: Field, totalEnergy: Energy, job: JobControl, beta: np.float64, out_stream):
         
         self.md_runs += 1
 
         j = int(np.random.random() * self.numSwaps)
         
-        
-        old_pos = np.zeros((len(basin), 3), dtype=np.float64)
-        symbols = []
-        cell = np.zeros((3,3), dtype=np.float64)
-        
-        #np.copyto(old_pos, basin.positions)
-        for i in range(len(basin)):
-            symbols.append(basin.symbols[i])
-            for j in range(3):
-                old_pos[i,j] = basin.positions[i,j]
-        for i in range(3):
-            for j in range(3):
-                cell[i,j] = basin.cell[i,j]
-        new_basin = Atoms(symbols = symbols, positions=old_pos, cell= cell, pbc=True)
-        new_basin.wrap()
+        new_basin = basin.create_atoms_object()
 
         #run an md simulation
         fld.run_md(new_basin, job.timestep, job.mdtemperature_K, job.mdfriction, job.mdsteps)
@@ -360,10 +343,9 @@ class BasinHop:
         new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol)
         
         totalEnergy.totalEnergy = new_energy.totalEnergy
-        
-        return new_basin
 
-       
+        basin.update_from_atoms(new_basin)
+        
     def transmutateAtoms(self, basin: Atoms, fld: Field, totalEnergy: Energy, spec: Species, beta: np.float64, out_stream):
 
         old_energy = totalEnergy
@@ -434,74 +416,3 @@ class BasinHop:
                 self.backwardMutations += 1
             else:
                 self.mutate_atom(basin, atm, self.transType2[k])
-
-    def select_atom(self, basin: Atoms) -> int:
-        
-        choice = -1
-            
-        choice = int(len(basin) * np.random.random())
-
-        
-        return choice     
-        
-    def select_atom_of_type(self, basin: Atoms, typ: str) -> int:
-        
-        atm = -1 
-        choice = -1
-            
-        found = False
-
-        atm_list = []
-    
-        for i in range(len(basin)):
-            if basin.symbols[i] == typ:
-                found = True
-                atm_list.append(i)
-        
-        
-        if found == False:
-            return atm 
-
-        choice = int(len(atm_list) * np.random.random())
-
-        atm = atm_list[choice]
-
-        return atm
-
-    def find_num_types(self, bas:Atoms, typ) -> int:
-        num_typ = 0
-        for i in range(len(bas)):
-            if typ == bas.symbols[i]:
-                num_typ += 1
-
-        return num_typ
-    
-
-    def swap_atom_positions(self, basin: Atoms, atm1: int, atm2: int):
-        #tmp = np.zeros(3, dtype=np.float64)
-        #tmp[:] =basin.positions[atm1,:]
-        #    basin.positions[atm1][:] = basin.positions[atm2][:]
-        #    basin.positions[atm2][:] = tmp[:]
-        for j in range(3):
-            tmp = basin.positions[atm1,j]
-            basin.positions[atm1,j] = basin.positions[atm2,j]
-            basin.positions[atm2,j] = tmp
-
-    
-    def swap_atom_types(self, basin: Atoms, atm1: int, atm2: int):
-        tmp = basin.symbols[atm1]
-        basin.symbols[atm1] = basin.symbols[atm2]
-        basin.symbols[atm2] = tmp
-
-    def mutate_atom(self, atm: int, typ: int, spec: Species):
-        ele = spec.get_species(typ)
-        self.chem_symbols[atm] = ele.name
-        self.mass[atm] = ele.mass
-        self.charge[atm] = ele.charge
-        self.atm_label[atm] = typ
-
-    
-    def cell_size(self, basin) -> np.float64:
-        
-        return basin.get_volume()
-    

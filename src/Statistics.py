@@ -2,11 +2,10 @@
 import numpy as np
 import math
 
-from ase import Atoms
-
 from typing import List
 from Species import Species  
 from Energy import Energy
+from config import Config
 
 """
     
@@ -466,15 +465,15 @@ class TypeStatistics:
             self.m_flc_nspc = np.zeros(num_s)
             self.m_stk_nspc = np.zeros(self.m_nstk * num_s)
 
-    def find_num_types(self, bas:Atoms, typ) -> int:
+    def find_num_types(self, bas:Config, typ) -> int:
         num_typ = 0
-        for i in range(len(bas)):
-            if typ == bas.symbols[i]:
+        for i in range(bas.natoms):
+            if typ == bas.symbol[i]:
                 num_typ += 1
 
         return num_typ
 
-    def sample_types(self, iter: int, equil: int, bas: Atoms, spec:Species):
+    def sample_types(self, iter: int, equil: int, bas: Config, spec:Species):
         tmp = [0.0] * self.m_nstk
         sclnv1 = float(self.m_sample - 1) / float(self.m_sample)
         sclnv2 = 1.0 / float(self.m_sample)

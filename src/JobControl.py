@@ -8,8 +8,6 @@ class JobControl:
         self.num_cycles = 1
         self.mc_steps = 0
         self.num_boxes = 1
-        self.sampleBasin = False
-        self.sampleBasinFreq = 0
         self.extPressure = 0.0
         self.temperature = 0.0
         self.maxDistance: np.float64 = 0.0
@@ -19,8 +17,8 @@ class JobControl:
         self.acceptVolMoveRatio = 0.37
         self.maxVolDisplacement: np.float64 = 0.1
         self.frozen_types = []
-        self.sanityCheckFreq = 0
-        self.printFreq = 0
+        self.sanityCheckFreq = 1000
+        self.printFreq = 1
         self.dumpArchive = False
         self.archiveFrequency = 1000
         self.save_downhill = False
@@ -38,7 +36,7 @@ class JobControl:
         self.mutateType2 = []
         self.transmuteChemPot = []
         self.volMoveSymmetry = 0
-        self.relax_structure = False
+        self.structure_method = "basinhop"
         self.restart = False
         self.max_force = 1.0e-3
 
@@ -77,9 +75,6 @@ class JobControl:
                 self.mcSteps = int(words[1])
             elif keyWord == "cycles":
                 self.num_cycles = int(words[1])
-            elif keyWord == "samplepos":
-                self.sampleBasin = True
-                self.sampleBasinFreq = int(words[1])
             elif keyWord == "pressure":
                 self.extPressure = float(words[1])
             elif keyWord == "temperature":
@@ -104,14 +99,12 @@ class JobControl:
                 self.archiveFrequency = int(words[1])
             elif keyWord == "equilsteps":
                 self.equilSteps = int(words[1])
-            elif keyWord == "relax":
-                self.relax_structure = True
+            elif keyWord == "method":
+                self.structure_method = words[1]
             elif keyWord == "restart":
                 self.restart = True
             elif keyWord == "savedownhill":
                 self.save_downhill = True
-            elif keyWord == "maxforce":
-                self.max_force = float(words[1])
             elif keyWord == "move":
                 subWord = words[1]
                 if subWord == "atoms":
