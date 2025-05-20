@@ -17,9 +17,9 @@ or MLIP potentials may be necessary.
 =========================
 
 
-The program requires three input files, *control*, *potentials* and *basis* that contain the
-keywords for the functionality of the program, empirical potential parameters and the atomic
-positions respectively.
+The program requires three input files, *control*, *potentials* and *basin.xyz* that contain the
+keywords for the functionality of the program, potential model and the atomic
+positions respectively (in extended xyz).
 
 -----------
 5.1 control
@@ -31,6 +31,8 @@ main input key words are
 +--------------+-------------+------------------------------------------------------+
 | **Key word** | **Type**    | **Functionality**                                    |
 +==============+=============+======================================================+
+| #            |             | comments the line (must be first char on the line)   |                                    |
++--------------+-------------+------------------------------------------------------+
 | print        | int         | The frequency of printing energies to mc.log         |
 |              |             | defaults to 1 i.e. every iteration                   |
 +--------------+-------------+------------------------------------------------------+
@@ -40,12 +42,13 @@ main input key words are
 | restart      |             | Restart the calculation with old configuration       |
 |              |             | make sure to cp restart.xyz to basin.xyz             |
 +--------------+-------------+------------------------------------------------------+
-| freeze       | int         | Freeze the following types of atoms in MC only. E.g. |
-|              |             |                                                      |
-|              |             | freeze 1                                             |
-|              |             | Au                                                   |
-|              |             |                                                      |
-|              |             | This prevents any movement of Au type atoms          |
+| temperature  | float       | The temperature (K) of simulation used in Boltzman   |
+|              |             | sampling                                             |
++--------------+-------------+------------------------------------------------------+
+| method       | string      | The type of simulation required. Use either          |
+|              |             | basinhop (default), airss or monte. The latter       |
+|              |             | is depricated at the moment as it does not appear    |
+|              |             | to work for swapping Si/Al                           |
 +--------------+-------------+------------------------------------------------------+
 | close        |             | Finish all input                                     |
 +--------------+-------------+------------------------------------------------------+
@@ -54,10 +57,12 @@ main input key words are
 | archivefreq  | int         | The frequency at which the configuration is saved    |
 |              |             | defaults to 1000                                     |
 +--------------+-------------+------------------------------------------------------+
-| art{         |             | Starts the processing of the ART specific key words  |
+| equilsteps   | int         | The number of equilibration steps                    |
 +--------------+-------------+------------------------------------------------------+
-| relax        |             | indicates that basin hopping method should be used   |
-|              |             | specific key words                                   |
+| savedownhill |             | During basin hopping method any configuration that   |
+|              |             | has an energy lower than the previous configuration  |
+|              |             | will be saved (NB there may have been an up hill move|
+|              |             | between downhill events).                            |
 +--------------+-------------+------------------------------------------------------+
 
 Description of keywords to control the molecular dynamics functionality. 
@@ -65,6 +70,38 @@ Description of keywords to control the molecular dynamics functionality.
 +----------------+-------------+------------------------------------------------------+
 | **Key word**   | **Type**    | **Functionality**                                    |
 +================+=============+======================================================+
+| mdtimestep     | float       | The time step in femtoseconds (default 2.0)          |
++----------------+-------------+------------------------------------------------------+
+| mdtemperature  | float       | The temperature for the MD in K (default 1000 K)     |
++----------------+-------------+------------------------------------------------------+
+| mdfirction     | float       | NVT friction (default 0.01 / fs)                     |
++----------------+-------------+------------------------------------------------------+
+| mdsteps        | int         | The number of MD steps (default 1000)                |
++----------------+-------------+------------------------------------------------------+
+
+Description of keywords to control the relaxation in basin hopping or AIRSS style calculations. 
+
++----------------+-------------+------------------------------------------------------+
+| **Key word**   | **Type**    | **Functionality**                                    |
++================+=============+======================================================+
+| relmethod      | string      | the type of relaxation method. Options are lbfgs     |
+|                |             | (default), bfgs, or fire                             |
++----------------+-------------+------------------------------------------------------+
+| reltol         | float       | tolerence for convergence                            |
++----------------+-------------+------------------------------------------------------+
+| relsteps       | int         | The number of relaxation steps (default 1000)        |
++----------------+-------------+------------------------------------------------------+
+
+
++----------------+-------------+------------------------------------------------------+
+| **Key word**   | **Type**    | **Functionality**                                    |
++================+=============+======================================================+
+| freeze       | int         | Freeze the following types of atoms in MC only. E.g. |
+|              |             |                                                      |
+|              |             | freeze 1                                             |
+|              |             | Au                                                   |
+|              |             |                                                      |
+|              |             | This prevents any movement of Au type atoms          |
 | kmcsteps       | int         | The number of kmc steps/cycles                       |
 +----------------+-------------+------------------------------------------------------+
 | mincap         | double      | The minimum activation energy.                       |

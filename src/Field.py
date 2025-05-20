@@ -28,6 +28,9 @@ class Field:
         #self.atoms = Atoms()
         self.janCalc = None #janCalculator()
 
+        self.arch = "mace_mp"
+        self.precision = "float64"
+
         self.first_setup = True
 
     def readPotential(self, in_stream, out_stream, spec: Species):
@@ -57,6 +60,12 @@ class Field:
             elif words[0].lower() == "device":
                 self.device = words[1].lower()
 
+            elif words[0].lower() == "precision": 
+                self.precision = words[1].lower()
+
+            elif words[0].lower() == "arch":
+                self.arch = words[1].lower()
+
             elif words[0].lower() == "model":
                 self.model = words[1]
 
@@ -71,7 +80,7 @@ class Field:
             print("a model name is required")
             exit(-1)
         
-        self.janCalc = choose_calculator(architecture="mace_mp", model=self.model, precision="float64", device=self.device)
+        self.janCalc = choose_calculator(architecture=self.arch, model=self.model, precision=self.precision, device=self.device)
 
 
         self.first_setup = False
@@ -80,7 +89,7 @@ class Field:
         
         total_energy = Energy()
         
-        atoms.set_calculator(self.janCalc)
+        atoms.calc = self.janCalc
 
         total_energy.totalEnergy = atoms.get_potential_energy()
         
@@ -91,13 +100,13 @@ class Field:
         total_energy = Energy()
        
         atoms.calc = self.janCalc
-
+        
         if relmethod == "lbfgs":
             flag = LBFGS(UnitCellFilter(atoms, mask=[1,1,1,1,1,1])).run(fmax=reltol, steps=relsteps)
         elif relmethod == "fire":
             flag = FIRE(UnitCellFilter(atoms, mask=[1,1,1,1,1,1])).run(fmax=reltol, steps=relsteps)
         elif relmethod == "bfgs":
-            flag = LBFGS(UnitCellFilter(atoms, mask=[1,1,1,1,1,1])).run(fmax=reltol, steps=relsteps)
+            flag = BFGS(UnitCellFilter(atoms, mask=[1,1,1,1,1,1])).run(fmax=reltol, steps=relsteps)
         else:
             print("unrecognised relaxation method")
             exit()

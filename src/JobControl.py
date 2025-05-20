@@ -42,7 +42,7 @@ class JobControl:
 
         #md parameters
         self.mdMoveFreq = 0
-        self.timestep = 2.0 * fs
+        self.mdtimestep = 2.0 * fs
         self.mdtemperature_K = 1000
         self.mdfriction = 0.01 / fs
         self.mdsteps = 1000
@@ -143,7 +143,7 @@ class JobControl:
                     self.volMoveSymmetry = 1
                 elif subWord == "orthorhombic":
                     self.volMoveSymmetry = 2
-            elif keyWord == "timestep":
+            elif keyWord == "mdtimestep":
                 self.timestep = float(words[1])
             elif keyWord == "mdtemperature":
                 self.mdtemperature_K = float(words[1])
@@ -152,7 +152,7 @@ class JobControl:
             elif keyWord == "mdsteps":
                 self.mdsteps = int(words[1])
             elif keyWord == "relmethod":
-                self.relmethod = words[1]
+                self.relmethod = (words[1].lower())
             elif keyWord == "relsteps":
                 self.relsteps = int(words[1])
             elif keyWord == "reltol":
