@@ -25,9 +25,9 @@ class BasinHop:
 
         #atom swaps
         self.numSwaps = 0
-        self.successfulDownSwaps = 0
-        self.attemptedSwaps = 0
-        self.successfulUpSwaps = 0
+        self.successfulDownSwaps = None
+        self.attemptedSwaps = None
+        self.successfulUpSwaps = None
         self.swapType1 = []
         self.swapType2 = []
 
@@ -58,6 +58,9 @@ class BasinHop:
         # Swap of atom positions
         if job.num_swap_atoms > 0:
             self.numSwaps = job.num_swap_atoms
+            self.successfulDownSwaps = np.zeros(self.numSwaps)
+            self.attemptedSwaps = np.zeros(self.numSwaps)
+            self.successfulUpSwaps = np.zeros(self.numSwaps)
             for j in range(self.numSwaps):
                 found = False
                 ele1 = None
@@ -251,11 +254,11 @@ class BasinHop:
 
         out_stream.write("\n")
        
-        if self.numSwaps > 0:
-            swapRatio = (self.successfulUpSwaps + self.successfulDownSwaps) / self.attemptedSwaps
-            successfulSwaps = self.successfulUpSwaps + self.successfulDownSwaps
-            out_stream.write(f"\n swaps : attempted, successful and ratio {self.attemptedSwaps} {successfulSwaps} {swapRatio:.10e}\n")
-            out_stream.write(f"\n swaps : Downhill and Uphill {self.successfulDownSwaps} {self.successfulUpSwaps} \n")
+        for j in range(self.numSwaps):
+            swapRatio = (self.successfulUpSwaps[j] + self.successfulDownSwaps[j]) / self.attemptedSwaps[j]
+            successfulSwaps = self.successfulUpSwaps[j] + self.successfulDownSwaps[j]
+            out_stream.write(f"\n swaps {job.swapType1[j]} {job.swapType2[j]}: attempted, successful and ratio {self.attemptedSwaps[j]} {successfulSwaps} {swapRatio:.10e}\n")
+            out_stream.write(f"\n swaps {job.swapType1[j]} {job.swapType2[j]}: Downhill and Uphill {self.successfulDownSwaps[j]} {self.successfulUpSwaps[j]} \n")
 
         if self.numTrans > 0:
             forwardRatio = self.forwardMutations / self.attemptForwardMutations
@@ -281,11 +284,12 @@ class BasinHop:
 
     def swapAtoms_relax(self, basin: Config, fld: Field, totalEnergy: Energy, job: JobControl, beta: np.float64, out_stream):
         
-        self.attemptedSwaps += 1
+        
 
         j = int(np.random.random() * self.numSwaps)
         print("swap selection ",j," ", self.numSwaps,self.swapType1[j],self.swapType2[j])
-        
+        self.attemptedSwaps[j] += 1
+
         atm1 = basin.select_atom_of_type(self.swapType1[j])
         atm2 = basin.select_atom_of_type(self.swapType2[j])
 
@@ -317,11 +321,11 @@ class BasinHop:
         if accept:
             totalEnergy.totalEnergy = new_energy.totalEnergy
             if deltaV < 0.0:
-                self.successfulDownSwaps += 1
+                self.successfulDownSwaps[j] += 1
                 if job.save_downhill:
                     write(filename="downhill.xyz", images=new_basin, format="extxyz", append=True)
             else:
-                self.successfulUpSwaps += 1
+                self.successfulUpSwaps[j] += 1
             print("swap accepted")
             basin.update_from_atoms(new_basin)
         else:
