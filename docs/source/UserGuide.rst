@@ -22,7 +22,7 @@ keywords for the functionality of the program, potential model and the atomic
 positions respectively (in extended xyz).
 
 -----------
-5.1 control
+3.1 control
 -----------
 
 The input is broken into sections depending on the functionality. The
@@ -31,7 +31,7 @@ main input key words are
 +--------------+-------------+------------------------------------------------------+
 | **Key word** | **Type**    | **Functionality**                                    |
 +==============+=============+======================================================+
-| #            |             | comments the line (must be first char on the line)   |                                    |
+| #            |             | comments the line (must be first char on the line)   |                                    
 +--------------+-------------+------------------------------------------------------+
 | print        | int         | The frequency of printing energies to mc.log         |
 |              |             | defaults to 1 i.e. every iteration                   |
@@ -64,6 +64,10 @@ main input key words are
 |              |             | will be saved (NB there may have been an up hill move|
 |              |             | between downhill events).                            |
 +--------------+-------------+------------------------------------------------------+
+| move         | string      | The move keyword is used to provide an action on the |
+|              |             | configuration by the means of a second key word.     |
+|              |             | Each keyword is described below                      |
++--------------+-------------+------------------------------------------------------+
 
 Description of keywords to control the molecular dynamics functionality. 
 
@@ -94,152 +98,32 @@ Description of keywords to control the relaxation in basin hopping or AIRSS styl
 
 
 +----------------+-------------+------------------------------------------------------+
-| **Key word**   | **Type**    | **Functionality**                                    |
+| **Key word**   |  **Functionality**                                    |
 +================+=============+======================================================+
-| freeze       | int         | Freeze the following types of atoms in MC only. E.g. |
-|              |             |                                                      |
-|              |             | freeze 1                                             |
-|              |             | Au                                                   |
-|              |             |                                                      |
-|              |             | This prevents any movement of Au type atoms          |
-| kmcsteps       | int         | The number of kmc steps/cycles                       |
+| atoms          | The *atoms* keyword must be followed the number of atom types to   |
+|                | be moved and the probability of the move occuring. It is only      |
+|                | active in Monte Carlo simulations. An example is                   |
+|                | move atoms 2 100                                                   |
+|                | Si                                                                 |
+|                | O                                                                  |
 +----------------+-------------+------------------------------------------------------+
-| mincap         | double      | The minimum activation energy.                       |
+| swap           | Swaps interchange the positions of two types. The number of atom   |
+|                | pairs and the probability of the move occuring. It is only         |
+|                | active in all types of calculation. An example is                  |
+|                | move swap 2 100                                                    |
+|                | Si  Al                                                             |
+|                | K   ghost   (the fictitious particle must be called ghost)         |
 +----------------+-------------+------------------------------------------------------+
-| prefactor      | double      | The prefactor used to calculate rates.               |
+| moldyn         | This activates an NVT molecular dynamics calculation (only within  |
+|                | basin hopping. An integer gives the probability of this ooccuring. |
 +----------------+-------------+------------------------------------------------------+
-| window         | double      | The window for accepting kmc energies.               |
+| volume         | A volume move within the monte Carlo method only An integer gives  | 
+|                | the probability of this ooccuring.                                 | 
 +----------------+-------------+------------------------------------------------------+
-| kmctemperature | double      | The temperature to be used by the kmc simulation     |
-+----------------+-------------+------------------------------------------------------+
-| kmcevents      | int         | The number of events collected per cycle.            |
-+----------------+-------------+------------------------------------------------------+
-| basin2delta    | double      | The magnitude of the displacement away from the      |
-|                |             | saddle point prior to the attempted relaxation to    |
-|                |             | the second basin.                                    |
-+----------------+-------------+------------------------------------------------------+
-| kmcmethod      | string      | The method used for the saddle search. Only ART or   |
-|                |             | dimer are available at the moment                    |
-+----------------+-------------+------------------------------------------------------+
-| kmcbasinradius | double      | The minimum displacement of an atom before it is     |
-|                |             | considered to have entered a new basin               |
-+----------------+-------------+------------------------------------------------------+
-| recycle        |             | recycles saddle points. Read the code as this is     |
-|                |             | experimental and may have significant impact on the  |
-|                |             | results                                              |
-+----------------+-------------+------------------------------------------------------+
-| usegaussian    | double      | The atoms are given a random displacement weighted   |
-|                |             | by a Gaussian of the specified width                 |
-+----------------+-------------+------------------------------------------------------+
-
-Description of keywords to control either the Activation Relaxation Technique. Again units are specified
-in the main directives above.
-
-+---------------------+-------------+------------------------------------------------------+
-| **Key word**        | **Type**    | **Functionality**                                    |
-+=====================+=============+======================================================+
-| numvectors          | int         | The number of Lnanczos vectors used to obtain        |
-|                     |             | eigenvalues. Default 20                              |
-+---------------------+-------------+------------------------------------------------------+
-| maxeigenvalue       | double      | The max eigenvalue. Once an eigenvalue falls below   |
-|                     |             | this value the forces parallel to the eigenvalue are |
-|                     |             | used.                                                |
-+---------------------+-------------+------------------------------------------------------+
-| initialdisplacement | double      | The displacement used to activate the ions at the    |
-|                     |             | start of the search.                                 |
-+---------------------+-------------+------------------------------------------------------+
-| eigentolerence      | double      | The tolerence to converge the eigenvalues.           |
-+---------------------+-------------+------------------------------------------------------+
-| lanczosdisplacement | double      | The displacement of atoms used to calculate the      |
-|                     |             | eigenvalues from the tri-diagonal matrix             |
-+---------------------+-------------+------------------------------------------------------+
-| maxstep             | int         | The number of iterations to calculate the saddle     |
-|                     |             | point.                                               |
-+---------------------+-------------+------------------------------------------------------+
-| minmethod           | string      | The mminimisation technique to find the saddle point |
-|                     |             | Only FIRE(2) is available at the moment.             |
-+---------------------+-------------+------------------------------------------------------+
-| timestep            | double      | The timestep used by FIRE. Typically should be       | 
-|                     |             | similar to that used by MD.                          |
-+---------------------+-------------+------------------------------------------------------+
-| alpha               | double      | The value of alpha used in FIRE                      |
-+---------------------+-------------+------------------------------------------------------+
-| damp                | double      | damping factor for the parallel forces               |
-+---------------------+-------------+------------------------------------------------------+
-| forcetol            | double      | The convergence criterion for the minimisation       |
-+---------------------+-------------+------------------------------------------------------+
-
-Input keywords for the relaxation
-
-+---------------------+-------------+------------------------------------------------------+
-| **Key word**        | **Type**    | **Functionality**                                    |
-+=====================+=============+======================================================+
-| debug               |             | increases the amount of information output to files. |
-+---------------------+-------------+------------------------------------------------------+
-| relaxsteps          | int         | The number of iterations of the minimisaer.          |
-+---------------------+-------------+------------------------------------------------------+
-| initialdisplacement | double      | The displacement used to activate the ions at the    |
-|                     |             | start of the search.                                 |
-+---------------------+-------------+------------------------------------------------------+
-| maxstep             | double      | The maximum size of the displacement in FIRE.        |
-+---------------------+-------------+------------------------------------------------------+
-| method              | string      | The mminimisation technique. There is a choice       |
-|                     |             | between FIRE, FIRE2 and ASE the moment.              |
-|                     |             | (The latter uses the minimisation technique from the |
-|                     |             | librray program ASE.)                        |
-+---------------------+-------------+------------------------------------------------------+
-| timestep            | double      | The timestep used by FIRE. Typically should be       | 
-|                     |             | similar to that used by MD.                          |
-+---------------------+-------------+------------------------------------------------------+
-| alpha               | double      | The value of alpha used in FIRE                      |
-+---------------------+-------------+------------------------------------------------------+
-| forcetol            | double      | The convergence criterion for the minimisation       |
-+---------------------+-------------+------------------------------------------------------+
-
---------------
-5.1 potentials
---------------
-
-+---------------------+-------------+------------------------------------------------------+
-| **Key word**        | **Type**    | **Functionality**                                    |
-+=====================+=============+======================================================+
-| device              | string      | The device wheer the potential energy is calculated  |
-|                     |             | default is "cuda". This variable is passed to the    |
-|                     |             | ASE/Janus-core calculator                            |
-+---------------------+-------------+------------------------------------------------------+
-| precision           | string      | either float64 (default) or float32                  |
-|                     |             | this string is passed directlt to the calculator     |
-|                     |             | i.e. no testing is done on it for max flexibility.   |
-+---------------------+-------------+------------------------------------------------------+
-| arch                |             | Architecture of the ASE calculator                   |
-|                     |             | Default (mace_mp).                                   |
-+---------------------+-------------+------------------------------------------------------+
-| model               |  string     | The full path and name of the model                  |
-+---------------------+-------------+------------------------------------------------------+
-| close               |             | stops any further input.                             |
-+---------------------+-------------+------------------------------------------------------+
-| #                   |             | indicates comment. Must be first character           |
-+---------------------+-------------+------------------------------------------------------+
-| species             | int         | species keyword followed by the number of different  |
-|                     |             | speccies. Each element type should be input as       |
-|                     |             | follows:                                             |
-|                     |             | name  mass charge atomic_number                      |
-+---------------------+-------------+------------------------------------------------------+
-
-The is also the possibility of using machine learned interatomic potentials with ASE calculators (mace is the default). In principal any ASE calculator can be used,
-but in practice the Field.py file may need to be modified. A potentials file is always needed to setup the calculation:
-
-   species 2
-   Si 28.0 0.0 14
-   O 16.0 0.0 8
-   model  ~/some/path/mace.model
-   close
-
-By default the calculation will run on a single GPU
 
 
 ---------
-5.2 basis
+3.2 basis
 ---------
 
 The basis format follows that of a simplified extended xyz. The minimum format is::
@@ -256,6 +140,44 @@ For example::
    O 1.4168603868  1.3899782202  1.3108695097
    O 4.1014301991  4.0478192159  1.4171530724
    O 3.7163970637  -1.3764087458  4.0580241564
+
+--------------
+3.3 potentials
+--------------
+
+Description of keywords used within the potentials file. This is consumed by the field.py 
+class and controls the calculation style. 
+
++----------------+-------------+------------------------------------------------------+
+| **Key word**   | **Type**    | **Functionality**                                    |
++================+=============+======================================================+
+| species        | int         | the number of different types. Each species are on   |
+|                |             | following lines e.g.                                 |
+|                |             | species 1                                            |
+|                |             | O 16.0 0.0 8.0 (the floats are required but not used |
+|                |             | at present)                                          |
++----------------+-------------+------------------------------------------------------+
+| close          |             | Finish all input                                     |
++----------------+-------------+------------------------------------------------------+
+| #              |             | comments the line (must be first char on the line)   |                                    
++----------------+-------------+------------------------------------------------------+
+| device         | string      | where the energy evaluation should be evaluated      |
+|                |             | it is not checked by the program but sent directly   |
+|                |             | the ASE/janus calculator. (default: "cuda")          |
++----------------+-------------+------------------------------------------------------+
+| precision      | string      | The precision of the calculation.                    |
+|                |             | It is not checked by the program but sent directly   |
+|                |             | the ASE/janus calculator. (default: "float64")       |
++----------------+-------------+------------------------------------------------------+
+| arch           | string      | The style of calculation used in the calculator.     |
+|                |             | In theory any ASE calculator could be used but it    |
+|                |             | could require the Field.py to be modified. Therefore |
+|                |             | it is not checked by the program but sent directly   |
+|                |             | the ASE/janus calculator. (default: "mace_mp")       |
++----------------+-------------+------------------------------------------------------+
+| model          | string      | The full path to the MLIP model is required          |
++----------------+-------------+------------------------------------------------------+
+
 
 =============
 6. References
