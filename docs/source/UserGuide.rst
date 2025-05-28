@@ -203,17 +203,22 @@ Input keywords for the relaxation
 +---------------------+-------------+------------------------------------------------------+
 | **Key word**        | **Type**    | **Functionality**                                    |
 +=====================+=============+======================================================+
-| cutoff              | double      | The short range cutoff for the potential and Ewald . |
+| device              | string      | The device wheer the potential energy is calculated  |
+|                     |             | default is "cuda". This variable is passed to the    |
+|                     |             | ASE/Janus-core calculator                            |
 +---------------------+-------------+------------------------------------------------------+
-| noimage             |             | The nearest image conventin is used by default. This |
-|                     |             | keyword uses a slower multiple image method that     |
-|                     |             | is better suited to small simulation cells.          |
+| precision           | string      | either float64 (default) or float32                  |
+|                     |             | this string is passed directlt to the calculator     |
+|                     |             | i.e. no testing is done on it for max flexibility.   |
 +---------------------+-------------+------------------------------------------------------+
-| noewald             |             | The Ewald sum is used by default for the two-body    |
-|                     |             | potential model. Thus this keyword switches it off.  |
+| arch                |             | Architecture of the ASE calculator                   |
+|                     |             | Default (mace_mp).                                   |
 +---------------------+-------------+------------------------------------------------------+
-| ewald precision     |             | Controls the accuracy of the Ewald sum. Default      |
-|                     |             | value: 1.0e-6                                        |
+| model               |  string     | The full path and name of the model                  |
++---------------------+-------------+------------------------------------------------------+
+| close               |             | stops any further input.                             |
++---------------------+-------------+------------------------------------------------------+
+| #                   |             | indicates comment. Must be first character           |
 +---------------------+-------------+------------------------------------------------------+
 | species             | int         | species keyword followed by the number of different  |
 |                     |             | speccies. Each element type should be input as       |
@@ -221,78 +226,17 @@ Input keywords for the relaxation
 |                     |             | name  mass charge atomic_number                      |
 +---------------------+-------------+------------------------------------------------------+
 
-As described in the installation section the program can be compiled with either two-body (including Ewald sum),
-many-body (metal potentials) or ASE calculator. Note all parameters are in electron volts! 
-Parameters compatible with the two-body are:
-
-+---------------------+-------------+------------------------------------------------------+
-| **Key word**        | **Parameters**                                                     |
-+=====================+=============+======================================================+
-| buck                | *A* , :math:`{\alpha}` , *C*                                       |
-+---------------------+--------------------------------------------------------------------+
-| morse               | *D* , r\ :sub:`eq` , *k*                                           |
-+---------------------+--------------------------------------------------------------------+
-| ljones              | :math:`{\eta}` , :math:`{\sigma}`                                  |
-+---------------------+--------------------------------------------------------------------+
-| bhm                 | *A* , :math:`{\alpha}` , *C* , *D*                                 |
-+---------------------+--------------------------------------------------------------------+
-
-Here is an example::
-
-   cutoff 8.0
-   noimage
-   species 2
-   Mg 24.0 2.0 12
-   O 16.0 -2.0  8
-   twobody 2
-   buck
-   Mg O  1428.5 0.2945  0.00
-   buck
-   O  O 22764.3 0.1490 27.879
-   close
-
-Parameters compatible with the metal potentials are:
-
-+---------------------+-------------+------------------------------------------------------+
-| **Key word**        | **Parameters**                                                     |
-+=====================+=============+======================================================+
-| stch                | :math:`{\eta}` , *a* , *n* , *m* , *c*                             |
-+---------------------+--------------------------------------------------------------------+
-| gupta               | *A* , r\ :sub:`eq` , *p*, *B*, *q*                                 |
-+---------------------+--------------------------------------------------------------------+
-| fnsc                | *c0* , *c1* , *c2* , *c* , *A* , *d* , :math:`{\Beta}`             |
-+---------------------+--------------------------------------------------------------------+
-
-Here is an example::
-
-   cutoff 6.5
-   species 1
-   Al  25.0  0.0 13
-   manybody 1 ev
-   suttonchen
-   Al  Al   0.033147    4.05       7.0        6.0         16.399
-   close
-
-The is also the possibility of using machine learned interatomic potentials with ASE calculators and the ASE dimer method. A potentials file is still needed
-to setup the calculation:
+The is also the possibility of using machine learned interatomic potentials with ASE calculators (mace is the default). In principal any ASE calculator can be used,
+but in practice the Field.py file may need to be modified. A potentials file is always needed to setup the calculation:
 
    species 2
-   B 16.0 0.0
-   C 16.0 0.0
-   model  CoB_v3.model
+   Si 28.0 0.0 14
+   O 16.0 0.0 8
+   model  ~/some/path/mace.model
    close
 
-By default thrdr will run on a single GPU (multiple GPU's has not been tested).
+By default the calculation will run on a single GPU
 
-In all calculations a file search.env is required and is employed to switch on or off the ASE functionality. For rigid ion or metal calculations this should be:
-
-   USE_ASE_RELAX = "False"
-   USE_ASE_SEARCH = "False"
-
-whilst for MLIP's and ASE dimer the False values should be changed to True:
-
-   USE_ASE_RELAX = "True"
-   USE_ASE_SEARCH = "True"
 
 ---------
 5.2 basis
@@ -317,30 +261,3 @@ For example::
 6. References
 =============
 
-.. [1]
-   D.T. Gillespie, *J. Phys. Chem.*, 1997, **81**, 2340-2361.
-
-.. [2]
-   A.F. Voter, *Phys. Rev. B*, 1986, **34**, 6819-6829.
-
-.. [3]
-   C.C. Battaile, *Comput. Methods Appl. Mech. Engrg.*, 2008, **197**,
-   3386-3398.
-
-.. [4]
-   D. Frenkel and B. Smit, *Understanding Molecular Simulation: From
-   Algorithms to Applications*, 2002, Academic Press.
-
-.. [5]
-   G. Henkelman and H. Jónsson, *J. Chem. Phys.*, 1999, **111**,
-   7010-7020.
-
-.. [6]
-   G.T. Barkema and N. Mousseau, *Computational Materials Science*,
-   2001, **20**, 285-292.
-
-.. [7]
-   R.A. Olsen, G.J. Kroes, and G. Henkelman, *The Journal of Chemical Physics*, 2004,  **121(20)**, 9776–9792.
-
-.. [8]
-   E. Bitzek, P. Koskinen, F. Gähler, M. Moseler, P. Gumbsch, *Phys. Rev. Lett.*, 2006, **97** , Article 170201.

@@ -155,7 +155,7 @@ class Config (object):
         
         choice = -1
             
-        choice = int(self.get_number_of_atoms * np.random.random())
+        choice = int(self.natoms * np.random.random())
 
         
         return choice     
@@ -242,7 +242,24 @@ class Config (object):
             self.pos[i,0] += delta[i,0]
             self.pos[i,1] += delta[i,1]
             self.pos[i,2] += delta[i,2]
-        
+
+    def make_atom_move(self, atm: int, dist_max: float):
+
+        old_pos = np.zeros(3, dtype=np.float64)
+        for j in range(3):
+            old_pos[j] = self.pos[atm,j]
+
+        #r = np.zeros(3, dtype=np.float64)
+        self.pos[atm,0] += (np.random.random() - 0.5) * dist_max
+        self.pos[atm,1] += (np.random.random() - 0.5) * dist_max
+        self.pos[atm,2] += (np.random.random() - 0.5) * dist_max
+
+        return old_pos
+    
+    def reject_atom_move(self, atm: int, old_pos: np.ndarray):
+        for j in range(3):
+            self.pos[atm][j] = old_pos[j]
+
     def read_config(self, instream):
         """
         reads in the simplified xyz file. very simplified for at the moment
@@ -316,6 +333,113 @@ class Config (object):
 
        
         return restart_iteration, restart_time, restart_energy
+    
+    def expand_cell_cubic(self, basin, bulks, max_vol_change):
+        r = np.random.random()
+        
+        scale = 1.0 + (r - 0.5) * max_vol_change
+
+        cell = self.vectors
+        cell[0][0] *= scale
+        cell[1][1] *= scale
+        cell[2][2] *= scale
+
+        volume = self.get_volume()
+        #print("new volume ", scale, volume, max_vol_change)
+ 
+        bulks[0] = scale
+        bulks[1] = scale
+        bulks[2] = scale
+
+        self.scale_positions(basin, bulks)
+
+        return volume
+   
+    def expand_cell_tetragonal(self, indx, bulks, max_vol_change):
+        r = np.random.random()
+        #bulks = np.ones(3, dtype=np.float64)
+        cell = self.vectors
+        
+        scale = 1.0 + (r - 0.5) * max_vol_change
+
+        if indx == 0:
+            cell[0][0] *= scale
+            cell[1][1] *= scale
+            bulks[0] = scale
+            bulks[1] = scale
+            bulks[2] = 1.0
+        else:
+            cell[2][2] *= scale
+            bulks[0] = 1.0
+            bulks[1] = 1.0
+            bulks[2] = scale
+
+        volume = self.get_volume()
+        
+        self.scale_positions(bulks)
+
+        return volume
+       
+    def expand_cell_orthorhombic(self, basin, indx, bulks, max_vol_change):
+        r = np.random.random()
+        cell = basin.get_cell()
+
+        scale = 1.0 + (r - 0.5) * max_vol_change
+
+        if indx == 0:
+            cell[0][0] *= scale
+            bulks[0] = scale
+            bulks[1] = 1.0
+            bulks[2] = 1.0
+        elif indx == 1:
+            cell[1][1] *= scale
+            bulks[0] = 1.0
+            bulks[1] = scale
+            bulks[2] = 1.0
+        else:
+            cell[2][2] *= scale
+            bulks[0] = 1.0
+            bulks[1] = 1.0
+            bulks[2] = scale
+
+        volume = self.get_volume()
+        
+        self.scale_positions(basin, bulks)
+
+        return volume
+
+    def scale_positions(self, bulks):
+
+        for i in range(self.natoms):
+           self.pos[i,:] *= bulks[:]
+
+    #def cell_size(self, basin) -> np.float64:
+        
+   #     return basin.get_volume()
+    
+    def restore_cell(self, basin, bulks, indx):
+        cell = basin.get_cell()
+
+        if indx == 0:
+            scale = 1.0 / bulks[0]
+            cell[0][0] *= scale
+            bulks[0] = scale
+            bulks[1] = 1.0
+            bulks[2] = 1.0
+        elif indx == 1:
+            scale = 1.0 / bulks[1]
+            cell[1][1] *= scale
+            bulks[0] = 1.0
+            bulks[1] = scale
+            bulks[2] = 1.0
+        else:
+            scale = 1.0 / bulks[2]
+            cell[2][2] *= scale
+            bulks[0] = 1.0
+            bulks[1] = 1.0
+            bulks[2] = scale
+
+        self.scale_positions(basin, bulks)
         
     def write_config(self, outstream, total_energy=None, iteration = None, time = None):
         """

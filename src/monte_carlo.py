@@ -9,6 +9,7 @@ from Field import Field
 from Species import Species
 from JobControl import JobControl
 from Statistics import Statistics, TypeStatistics
+from config import Config
 
 BOLTZMANN = .00008617333262145 # in eV
 EXIT_FAILURE = 1
@@ -220,20 +221,17 @@ class MonteCarlo:
         
 
 
-    def run(self, spec: Species, fld: Field, job: JobControl, stats: Statistics, type_stats: TypeStatistics, basin, numSteps, cycle, initialise, out_stream):
+    def run(self, spec: Species, fld: Field, job: JobControl, stats: Statistics, type_stats: TypeStatistics, basin: Config, numSteps, cycle, initialise, out_stream):
 
        
         volRatio = np.zeros(6, dtype=np.float64)
 
-        totalEnergy = []
+        totalEnergy = Energy()
         checkEnergy = Energy()
 
         # Initiate the statistics
-        for i in range(job.num_boxes):
-            stats[i].zero(1000, 0.0, False)
-            type_stats[i].zero_types(spec.get_num_species(), False) 
-
-        xyzStream = None
+        stats.zero(1000, 0.0, False)
+        type_stats.zero_types(spec.get_num_species(), False) 
 
         if job.dumpArchive:
             out_stream.write(f"\n archive frequency {job.archiveFrequency}\n")
@@ -244,58 +242,47 @@ class MonteCarlo:
     
         out_stream.write(f"\n beta (1/KT) {beta:.8f}\n")
         
-        for ibox in range(job.num_boxes):
-            fld.setup()
+        fld.setup()
 
-            energy_new = fld.calculate_energy(basin[ibox])
+        new_basin = basin.create_atoms_object()
+        totalEnergy = fld.calculate_energy(new_basin)
            
-            totalEnergy.append(energy_new)
-            totalEnergy[ibox].print_energy(ibox, out_stream)
+        #totalEnergy.totalEnergy = energy_new.totalEnergy
+        totalEnergy.print_energy(1, out_stream)
 
         numSteps = 1
 
         while numSteps <= job.mcSteps:
-
-            ibox = int(job.num_boxes * np.random.random())
 
             choice = int(self.numMCMoves * np.random.random())
 
             selection = self.mcMoveList[choice]
 
             if selection == 1:
-                self.move_atom(basin[ibox], fld, totalEnergy[ibox], beta, out_stream)
+                self.move_atom(basin, fld, totalEnergy, beta, out_stream)
 
             elif selection == 2:
-                self.swapAtoms(basin[ibox], fld, totalEnergy[ibox], job, beta, out_stream)
+                self.swapAtoms(basin, fld, totalEnergy, job, beta, out_stream)
 
             elif selection == 3:
-                self.transmutateAtoms(basin[ibox], fld, totalEnergy[ibox], spec, beta, out_stream)
+                self.transmutateAtoms(basin, fld, totalEnergy, spec, beta, out_stream)
 
             elif selection == 5:               
-                 self.move_volume(basin[ibox], fld, totalEnergy[ibox], spec, job, beta, out_stream)
+                 self.move_volume(basin, fld, totalEnergy, spec, job, beta, out_stream)
 
-            for ib in range(job.num_boxes):
-                stats[ib].sample(job.equilSteps, numSteps, totalEnergy[ib], basin[ib].get_volume(), basin[ib].get_cell().flatten(), out_stream)
-                type_stats[ib].sample_types(numSteps, job.equilSteps, basin[ib], spec)
+            stats.sample(job.equilSteps, numSteps, totalEnergy, basin.get_volume(), basin.vectors.flatten(), out_stream)
+            type_stats.sample_types(numSteps, job.equilSteps, basin, spec)
 
-                #if self.numSemiWidom > 0:
-                #    chem_stats.sample_semi_widom(chemPotAtom1, chemPotAtom2, numSemiWidom, numSteps, job.equilSteps)
+            if numSteps % job.printFreq == 0:
+                stats.check_point(numSteps, job.equilSteps, 0.0, out_stream)
+                type_stats.check_point_types(spec, out_stream)
+            
+            if job.dumpArchive and numSteps % job.archiveFrequency == 0:
+                archive_io = open("archive.xyz", "a")
+                basin.write_config(archive_io, total_energy=totalEnergy.get_total_energy(), iteration=numSteps)
+                archive_io.close()
 
             
-
-                if numSteps % job.printFreq == 0:
-                    stats[ib].check_point(numSteps, job.equilSteps, 0.0, out_stream)
-                    type_stats[ib].check_point_types(spec, out_stream)
-                    #if self.numSemiWidom > 0:
-                    #    chem_stats[ib].check_point_semi_widom(self.semiWidomType1, self.semiWidomType2, self.numSemiWidom, spec, job.temperature, out_stream)
-
-                if job.dumpArchive and numSteps % job.archiveFrequency == 0:
-                    basin[ib].writeBasisXYZ(spec, xyzStream)
-                    xyzStream.flush()
-
-                    with open(f"restart", "w") as restartStream:
-                        basin[ib].dump_basis(spec, 0.0, 0.0, job.mc_steps, restartStream)
-
             if numSteps % job.accAtomMoveUpdate == 0 and numSteps > 0:
                 for i in range(spec.number_of_elements):
                     if self.attemptedAtomMoves[i] > 0:
@@ -325,42 +312,40 @@ class MonteCarlo:
             #if numSteps > job.equilSteps and job.sampleBasin and numSteps % job.sampleBasinFreq == 0:
             #    basin[cycle].samplePositions()
 
-            if numSteps % job.sanityCheckFreq == 0:
-                restart_stream = open("restart", "w") 
-            
-                
-                for ib in range(job.num_boxes):
-                    checkEnergy = fld.calculate_energy(basin[ibox])
+            if numSteps % job.sanityCheckFreq == 0: 
+                restart_io = open("restart.xyz", "w")
+                basin.write_config(restart_io, total_energy=totalEnergy.get_total_energy(), iteration=numSteps)
+                restart_io.close()
+              
+                new_basin = basin.create_atoms_object()
+                checkEnergy = fld.calculate_energy(new_basin)
+                basin.update_from_atoms(new_basin)
 
-                    eDiff = checkEnergy.get_total_energy() - totalEnergy[ib].get_total_energy()
+                eDiff = checkEnergy.get_total_energy() - totalEnergy.get_total_energy()
 
-                    if abs(eDiff) > 1.0e-6:
-                        out_stream.write(f"\n sanity check failed on iteration {numSteps} !!!!!!!\n")
-                        out_stream.write(f" total diff {eDiff.totalEnergy:.10e}\n")
+                if abs(eDiff) > 1.0e-6:
+                    out_stream.write(f"\n sanity check failed on iteration {numSteps} !!!!!!!\n")
+                    out_stream.write(f" total diff {eDiff.totalEnergy:.10e}\n")
                         
-                    totalEnergy[ib] = checkEnergy
+                totalEnergy.totalEnergy = checkEnergy.totalEnergy
 
-                    #basin[ib].dump_basis(spec, 0.0, 0.0, numSteps, restart_stream)
-
-                restart_stream.flush()
-                restart_stream.close()
 
             numSteps += 1
 
         out_stream.write("\n\n *****************************************************************************************************\n")
-        out_stream.write(f" final energy of system containing {basin[cycle].get_number_of_atoms()} atoms\n")
+        out_stream.write(f" final energy of system containing {basin.get_number_of_atoms()} atoms\n")
         out_stream.write(" *****************************************************************************************************\n")
 
         
-        for ibox in range(job.num_boxes):
-            final_energy = Energy()
-            final_energy = fld.calculate_energy(basin[ibox])
+        final_energy = Energy()
+        new_basin = basin.create_atoms_object()
+        final_energy = fld.calculate_energy(new_basin)
 
-            final_energy.print_energy(ibox, out_stream)
+        final_energy.print_energy(0, out_stream)
 
-            out_stream.write("\n final sanity check")
-            checkEnergy = final_energy - totalEnergy[ibox]
-            checkEnergy.print_energy(cycle, out_stream)
+        out_stream.write("\n final sanity check")
+        checkEnergy = final_energy - totalEnergy
+        checkEnergy.print_energy(cycle, out_stream)
 
         out_stream.write("\n\n *****************************************************************************************************\n")
         out_stream.write(" Summary of simulation\n")
@@ -409,36 +394,37 @@ class MonteCarlo:
 
     
 
-    def move_atom(self, basin: Atoms, fld: Field, total_energy: Energy, beta: float, out_stream):
-        
-        old_pos = np.zeros(3, dtype=np.float64)
+    def move_atom(self, basin: Config, fld: Field, total_energy: Energy, beta: float, out_stream):
         
         
         choice = int(np.random.random() * self.noAtomMovers)
         typ = self.atomMoveTypes[choice]
         
-        energy_old = Energy()
-        energy_new = Energy()
-        
-        atm = self.select_atom(basin)
+        atm = basin.select_atom()
         
         if atm < 0:
             return
         
+        energy_old = Energy()
+        energy_old.totalEnergy = total_energy.totalEnergy
+        energy_new = Energy()
+        
+        
+        
         self.totalAtomMoves += 1
         self.attemptedAtomMoves[typ] += 1
 
-        energy_old = fld.calculate_energy(basin)
+        print("before move ", atm, basin.pos[atm,:])
+        old_pos = basin.make_atom_move(atm, self.distance_atom_max[typ])
+        print("after move ", atm, basin.pos[atm,:])
         
-        old_pos[:] = basin.positions[atm][:]
-        delta_pos = self.atom_displacement(self.distance_atom_max[typ])
-        self.make_atom_move(basin, atm, delta_pos)
-        
-        energy_new = fld.calculate_energy(basin)
+        #create atom object and calculate new energy
+        new_basin = basin.create_atoms_object()
+        energy_new = fld.calculate_energy(new_basin)
         
         deltaV = energy_new.get_total_energy() - energy_old.get_total_energy()
         deltaVB = deltaV * beta
-        
+        print("swap ", energy_old.get_total_energy(), energy_new.get_total_energy(), deltaV, deltaVB)
         #energyDifference.print_energy(0, out_stream)
         accept = False
         arg = np.random.random()
@@ -455,16 +441,20 @@ class MonteCarlo:
             
         
         if accept:
+            #update the total energy (basin can remain the same)
             total_energy.totalEnergy = energy_new.totalEnergy
             
             self.noAtomMoves[typ] += 1
             self.successfulAtomMoves += 1
+            print("accepted ")
             
         else:
-            self.reject_atom_move(basin, atm, old_pos)
+            #revert basin back to its old state
+            basin.reject_atom_move(atm, old_pos)
+            print("rejected")
 
 
-    def move_volume(self, basin: Atoms, fld: Field, totalEnergy: Energy, spec: Species, job: JobControl, beta: float, out_stream):
+    def move_volume(self, basin: Config, fld: Field, totalEnergy: Energy, spec: Species, job: JobControl, beta: float, out_stream):
         indx = 0
         vol_new = 1.0
         natoms = len(basin)
@@ -509,18 +499,15 @@ class MonteCarlo:
 
         else:
             self.restore_cell(basin, bulks, indx)
-            
-    def getRandomNumber(self):
-        return np.random.random()
 
-    def swapAtoms(self, basin: Atoms, fld: Field, totalEnergy: Energy, job: JobControl, beta: np.float64, out_stream):
+    def swapAtoms(self, basin: Config, fld: Field, totalEnergy: Energy, job: JobControl, beta: np.float64, out_stream):
         
         self.attemptedSwaps += 1
 
-        j = int(self.getRandomNumber() * self.numSwaps)
+        j = int(np.random.random() * self.numSwaps)
         
-        atm1 = self.select_atom_of_type(basin, self.swapType1[j])
-        atm2 = self.select_atom_of_type(basin, self.swapType2[j])
+        atm1 = basin.select_atom_of_type(self.swapType1[j])
+        atm2 = basin.select_atom_of_type(self.swapType2[j])
 
         if atm1 == -1 or atm2 == -1:
             return
@@ -529,13 +516,11 @@ class MonteCarlo:
         old_energy.totalEnergy = totalEnergy.totalEnergy
 
         #print("swapping", atm1, atm2, basin.chem_symbols[atm1], basin.chem_symbols[atm2])
-        self.swap_atom_positions(basin, atm1, atm2)
+        basin.swap_atom_positions(atm1, atm2)
 
         new_energy = Energy()
-        #calculating energy does not take into account pair potential methods
-        #new_energy = fld.calculate_swap_energy(basin.pos_r, basin.lat_vector, basin.rcp_vector, basin.charge, 
-        #                    basin.atm_label, basin.chem_symbols, basin.frozen, basin.number_of_atoms, old_energy)
-        new_energy = fld.calculate_energy(basin)
+        new_basin = basin.create_atoms_object()
+        new_energy = fld.calculate_energy(new_basin)
 
         deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
         deltaVB = beta * deltaV
@@ -557,255 +542,9 @@ class MonteCarlo:
             self.successfulSwaps += 1
 
         else:
-            self.swap_atom_positions(basin, atm1, atm2)
+            basin.swap_atom_positions(atm1, atm2)
 
     
-    def transmutateAtoms(self, basin: Atoms, fld: Field, totalEnergy: Energy, spec: Species, beta: np.float64, out_stream):
-
-        old_energy = totalEnergy
-
-        choice = self.getRandomNumber()
-
-        if choice < 0.5:
-            self.attemptForwardMutations += 1
-            k = int(self.getRandomNumber() * self.numTrans)
-            deltaMu = self.transmuteChemPot[k]
-
-            numTypes1 = self.find_num_types(basin, self.transType1[k])
-            if numTypes1 == 0:
-                return
-
-            numTypes2 = self.find_num_types(basin, self.transType2[k])
-            weight = float(numTypes1) / float(numTypes2 + 1)
-
-            atm = self.select_atom_of_type(basin, self.transType1[k])
-            if atm == -1:
-                return
-
-            self.mutate_atom(basin, atm, self.transType2[k])
-
-            new_energy = Energy()
-            new_energy = fld.calculate_energy(basin)
-
-            deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
-            deltaVB = beta * (deltaV - deltaMu)
-            prob = weight * math.exp(-deltaVB)
-            print("forward",atm,self.transType1[k],self.transType1[k],deltaV,(deltaV - deltaMu),deltaVB,prob )
-            if self.getRandomNumber() < prob:
-                totalEnergy.totalEnergy = new_energy.totalEnergy
-                self.forwardMutations += 1
-            else:
-                self.mutate_atom(basin, atm, self.transType1[k])
-        else:
-            self.attemptBackwardMutations += 1
-            k = int(self.getRandomNumber() * self.numTrans)
-            deltaMu = self.transmuteChemPot[k]
-
-            numTypes2 = self.find_num_types(basin, self.transType2[k])
-            if numTypes2 == 0:
-                return
-
-            numTypes1 = self.find_num_types(basin, self.transType1[k])
-            weight = float(numTypes2) / float(numTypes1 + 1)
-
-            atm = self.select_atom(basin, self.transType2[k])
-            if atm == -1:
-                return
-
-            #oldEnergy = Energy()
-            #fld.calculateAtomEnergy(atm, basin.pos_x, basin.pos_y, basin.pos_z, basin.lat_vector, basin.rcp_vector, basin.charge, 
-            #                        basin.atm_label, basin.frozen, basin.number_of_atoms, oldEnergy)
-
-            self.mutate_atom(basin, atm, self.transType1[k])
-
-            new_energy = Energy()
-            new_energy = fld.calculate_energy(basin)
-
-            deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
-            deltaVB = beta * (deltaV + deltaMu)
-            prob = weight * math.exp(-deltaVB)
-            print("back",atm,self.transType2[k],self.transType1[k],deltaV,(deltaV + deltaMu),deltaVB,prob )
-            if self.getRandomNumber() < prob:
-                totalEnergy.totalEnergy = new_energy.totalEnergy
-                self.backwardMutations += 1
-            else:
-                self.mutate_atom(basin, atm, self.transType2[k])
-
-    def select_atom(self, basin: Atoms) -> int:
-        
-        choice = -1
-            
-        choice = int(len(basin) * np.random.random())
-
-        
-        return choice     
-        
-    def select_atom_of_type(self, basin: Atoms, typ: str) -> int:
-        
-        atm = -1 
-        choice = -1
-            
-        found = False
-
-        atm_list = []
-    
-        for i in range(len(basin)):
-            if basin.symbols[i] == typ:
-                found = True
-                atm_list.append(i)
-        
-        
-        if found == False:
-            return atm 
-
-        choice = int(len(atm_list) * np.random.random())
-
-        atm = atm_list[choice]
-
-        return atm
-
-    def find_num_types(self, bas:Atoms, typ) -> int:
-        num_typ = 0
-        for i in range(len(bas)):
-            if typ == bas.symbols[i]:
-                num_typ += 1
-
-        return num_typ
-    def atom_displacement(self, dist_max: float) -> np.ndarray:
-        r = [self.getRandomNumber() for _ in range(3)]
-
-        delta_pos = np.zeros(3, dtype=np.float64)
-        delta_pos[0] = (r[0] - 0.5) * dist_max
-        delta_pos[1] = (r[1] - 0.5) * dist_max
-        delta_pos[2] = (r[2] - 0.5) * dist_max
-
-        #print ("old", self.pos_r[atom,:], dist_max)
-        #print("new ", new_pos[:])
-
-        return delta_pos
-
-    def make_atom_move(self, basin: Atoms, atm: int, delta_pos: np.ndarray):
-        basin.positions[atm][:] = basin.positions[atm][:] + delta_pos[:]
-
-    def reject_atom_move(self, basin: Atoms, atm: int, old_pos: np.ndarray):
-        basin.positions[atm][:] = old_pos[:]
-
-    def swap_atom_positions(self, basin: Atoms, atm1: int, atm2: int):
-        tmp = np.zeros(3, dtype=np.float64)
-        tmp[:] =basin.positions[atm1][:]
-        basin.positions[atm1][:] = basin.positions[atm2][:]
-        basin.positions[atm2][:] = tmp[:]
-
-    def mutate_atom(self, atm: int, typ: int, spec: Species):
-        ele = spec.get_species(typ)
-        self.chem_symbols[atm] = ele.name
-        self.mass[atm] = ele.mass
-        self.charge[atm] = ele.charge
-        self.atm_label[atm] = typ
-
-    def expand_cell_cubic(self, basin, bulks, max_vol_change):
-        r = np.random.random()
-        
-        scale = 1.0 + (r - 0.5) * max_vol_change
-
-        cell = basin.get_cell()
-        basin.cell[0][0] *= scale
-        basin.cell[1][1] *= scale
-        basin.cell[2][2] *= scale
-
-        volume = self.cell_size(basin)
-        #print("new volume ", scale, volume, max_vol_change)
  
-        bulks[0] = scale
-        bulks[1] = scale
-        bulks[2] = scale
 
-        self.scale_positions(basin, bulks)
-
-        return volume
-   
-    def expand_cell_tetragonal(self, basin, indx, bulks, max_vol_change):
-        r = np.random.random()
-        #bulks = np.ones(3, dtype=np.float64)
-        cell = basin.get_cell()
-        
-        scale = 1.0 + (r - 0.5) * max_vol_change
-
-        if indx == 0:
-            cell[0][0] *= scale
-            cell[1][1] *= scale
-            bulks[0] = scale
-            bulks[1] = scale
-            bulks[2] = 1.0
-        else:
-            cell[2][2] *= scale
-            bulks[0] = 1.0
-            bulks[1] = 1.0
-            bulks[2] = scale
-
-        volume = self.cell_size()
-        
-        self.scale_positions(basin, bulks)
-
-        return volume
-       
-    def expand_cell_orthorhombic(self, basin, indx, bulks, max_vol_change):
-        r = np.random.random()
-        cell = basin.get_cell()
-
-        scale = 1.0 + (r - 0.5) * max_vol_change
-
-        if indx == 0:
-            cell[0][0] *= scale
-            bulks[0] = scale
-            bulks[1] = 1.0
-            bulks[2] = 1.0
-        elif indx == 1:
-            cell[1][1] *= scale
-            bulks[0] = 1.0
-            bulks[1] = scale
-            bulks[2] = 1.0
-        else:
-            cell[2][2] *= scale
-            bulks[0] = 1.0
-            bulks[1] = 1.0
-            bulks[2] = scale
-
-        volume = self.cell_size()
-        
-        self.scale_positions(basin, bulks)
-
-        return volume
-
-    def scale_positions(self, basin:Atoms, bulks):
-
-        for i in range(len(basin)):
-           basin.positions[i,:] *= bulks[:]
-
-    def cell_size(self, basin) -> np.float64:
-        
-        return basin.get_volume()
     
-    def restore_cell(self, basin, bulks, indx):
-        cell = basin.get_cell()
-
-        if indx == 0:
-            scale = 1.0 / bulks[0]
-            cell[0][0] *= scale
-            bulks[0] = scale
-            bulks[1] = 1.0
-            bulks[2] = 1.0
-        elif indx == 1:
-            scale = 1.0 / bulks[1]
-            cell[1][1] *= scale
-            bulks[0] = 1.0
-            bulks[1] = scale
-            bulks[2] = 1.0
-        else:
-            scale = 1.0 / bulks[2]
-            cell[2][2] *= scale
-            bulks[0] = 1.0
-            bulks[1] = 1.0
-            bulks[2] = scale
-
-        self.scale_positions(basin, bulks)

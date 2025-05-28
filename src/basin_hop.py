@@ -228,7 +228,7 @@ class BasinHop:
                     out_stream.write(f"\n sanity check failed on iteration {numSteps} !!!!!!!\n")
                     out_stream.write(f" total diff {eDiff.totalEnergy:.10e}\n")
                         
-                totalEnergy = checkEnergy
+                totalEnergy.totalEnergy = checkEnergy.totalEnergy
 
             numSteps += 1
 
@@ -320,6 +320,7 @@ class BasinHop:
         
         if accept:
             totalEnergy.totalEnergy = new_energy.totalEnergy
+            write(filename="accepted.xyz", images=new_basin, format="extxyz", append=True)
             if deltaV < 0.0:
                 self.successfulDownSwaps[j] += 1
                 if job.save_downhill:
@@ -350,73 +351,3 @@ class BasinHop:
 
         basin.update_from_atoms(new_basin)
         
-    def transmutateAtoms(self, basin: Atoms, fld: Field, totalEnergy: Energy, spec: Species, beta: np.float64, out_stream):
-
-        old_energy = totalEnergy
-
-        choice = np.random.random()
-
-        if choice < 0.5:
-            self.attemptForwardMutations += 1
-            k = int(np.random.random() * self.numTrans)
-            deltaMu = self.transmuteChemPot[k]
-
-            numTypes1 = self.find_num_types(basin, self.transType1[k])
-            if numTypes1 == 0:
-                return
-
-            numTypes2 = self.find_num_types(basin, self.transType2[k])
-            weight = float(numTypes1) / float(numTypes2 + 1)
-
-            atm = self.select_atom_of_type(basin, self.transType1[k])
-            if atm == -1:
-                return
-
-            self.mutate_atom(basin, atm, self.transType2[k])
-
-            new_energy = Energy()
-            new_energy = fld.calculate_energy(basin)
-
-            deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
-            deltaVB = beta * (deltaV - deltaMu)
-            prob = weight * math.exp(-deltaVB)
-            print("forward",atm,self.transType1[k],self.transType1[k],deltaV,(deltaV - deltaMu),deltaVB,prob )
-            if np.random.random() < prob:
-                totalEnergy.totalEnergy = new_energy.totalEnergy
-                self.forwardMutations += 1
-            else:
-                self.mutate_atom(basin, atm, self.transType1[k])
-        else:
-            self.attemptBackwardMutations += 1
-            k = int(np.random.random() * self.numTrans)
-            deltaMu = self.transmuteChemPot[k]
-
-            numTypes2 = self.find_num_types(basin, self.transType2[k])
-            if numTypes2 == 0:
-                return
-
-            numTypes1 = self.find_num_types(basin, self.transType1[k])
-            weight = float(numTypes2) / float(numTypes1 + 1)
-
-            atm = self.select_atom(basin, self.transType2[k])
-            if atm == -1:
-                return
-
-            #oldEnergy = Energy()
-            #fld.calculateAtomEnergy(atm, basin.pos_x, basin.pos_y, basin.pos_z, basin.lat_vector, basin.rcp_vector, basin.charge, 
-            #                        basin.atm_label, basin.frozen, basin.number_of_atoms, oldEnergy)
-
-            self.mutate_atom(basin, atm, self.transType1[k])
-
-            new_energy = Energy()
-            new_energy = fld.calculate_energy(basin)
-
-            deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
-            deltaVB = beta * (deltaV + deltaMu)
-            prob = weight * math.exp(-deltaVB)
-            print("back",atm,self.transType2[k],self.transType1[k],deltaV,(deltaV + deltaMu),deltaVB,prob )
-            if np.random.random() < prob:
-                totalEnergy.totalEnergy = new_energy.totalEnergy
-                self.backwardMutations += 1
-            else:
-                self.mutate_atom(basin, atm, self.transType2[k])

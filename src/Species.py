@@ -20,6 +20,10 @@ class Species:
 
         for _ in range(self.number_of_elements):
             line = in_stream.readline().strip()
+
+            if line[0] == '#':
+                continue
+            
             words = self.split(line)
 
             ele = Element()
