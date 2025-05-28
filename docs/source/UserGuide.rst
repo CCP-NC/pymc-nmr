@@ -115,7 +115,7 @@ Description of keywords to control the relaxation in basin hopping or AIRSS styl
 |                | K   ghost   (the fictitious particle must be called ghost)         |
 +----------------+-------------+------------------------------------------------------+
 | moldyn         | This activates an NVT molecular dynamics calculation (only within  |
-|                | basin hopping. An integer gives the probability of this ooccuring. |
+|                | basin hopping). An integer gives the probability of this ooccuring.|
 +----------------+-------------+------------------------------------------------------+
 | volume         | A volume move within the monte Carlo method only An integer gives  | 
 |                | the probability of this ooccuring.                                 | 
@@ -132,6 +132,8 @@ The basis format follows that of a simplified extended xyz. The minimum format i
    Lattice="vectors * 9"
    name      x  y  z
    name      x  y  z
+
+*NB* any fictitious or ghost atoms must be placed last in the basin.xyz file.
 
 For example::
 
