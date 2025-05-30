@@ -195,14 +195,22 @@ class Config (object):
                 swap_list.append(i)
                 shuffle_list.append(i)
 
-        print("unshuffled ", shuffle_list)
+        #for i in range(self.natoms):
+        #    if self.symbol[i] == "K" or self.symbol[i] == "ghost":
+        #        print(i, self.pos[i,:])
+
+        #print("unshuffled ", shuffle_list)
 
         np.random.shuffle(shuffle_list)
-        print("shuffled ", shuffle_list)
+        #print("shuffled ", shuffle_list)
         for i in range(len(swap_list)):
             na = swap_list[i]
             nb = shuffle_list[i]
             self.pos[na,:] = positions[nb,:]
+
+        #for i in range(self.natoms):
+        #    if self.symbol[i] == "K" or self.symbol[i] == "ghost":
+        #        print(i, self.pos[i,:])
 
     def find_num_types(self, typ: str) -> int:
         """ determines the number of a given type of atom and returns it as an integer """

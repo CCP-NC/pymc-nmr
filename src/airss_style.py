@@ -185,6 +185,7 @@ class AirssStyle:
 
         new_energy = Energy()
         new_basin = new_cfg.create_atoms_object()
+        #write(filename="shuffled.xyz", images=new_basin, format="extxyz", append=False)
         new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol)
         
         deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
@@ -193,8 +194,9 @@ class AirssStyle:
     
         
         if deltaV < 0.0:
+            print("airss new basin found")
             totalEnergy.totalEnergy = new_energy.totalEnergy
-            self.successful_airss += 1
+            self.sucessfull_airss += 1
             if job.save_downhill:
                  write(filename="downhill.xyz", images=new_basin, format="extxyz", append=True)
             
