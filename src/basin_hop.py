@@ -159,7 +159,7 @@ class BasinHop:
 
         # Initiate the statistics
         stats.zero(1000, 0.0, False)
-        type_stats.zero_types(spec.get_num_species(), False) 
+        type_stats.zero_types(1000, spec.get_num_species(), False) 
 
         beta = 1.0 / (job.temperature * BOLTZMANN)
     

@@ -231,12 +231,7 @@ class MonteCarlo:
 
         # Initiate the statistics
         stats.zero(1000, 0.0, False)
-        type_stats.zero_types(spec.get_num_species(), False) 
-
-        if job.dumpArchive:
-            out_stream.write(f"\n archive frequency {job.archiveFrequency}\n")
-            xyzStream = open("mc_archive.xyz", "w")
-            
+        type_stats.zero_types(1000, spec.get_num_species(), False) 
 
         beta = 1.0 / (job.temperature * BOLTZMANN)
     
@@ -249,6 +244,11 @@ class MonteCarlo:
            
         #totalEnergy.totalEnergy = energy_new.totalEnergy
         totalEnergy.print_energy(1, out_stream)
+
+        if job.restart == False:
+            archive_io = open("archive.xyz", "w")
+            basin.write_config(archive_io, totalEnergy=totalEnergy.get_total_energy(), iteration=0)
+            archive_io.close()
 
         numSteps = 1
 
