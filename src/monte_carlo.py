@@ -270,7 +270,7 @@ class MonteCarlo:
             elif selection == 5:               
                  self.move_volume(basin, fld, totalEnergy, spec, job, beta, out_stream)
 
-            stats.sample(job.equilSteps, numSteps, totalEnergy, basin.get_volume(), basin.vectors.flatten(), out_stream)
+            stats.sample(job.equilSteps, numSteps, totalEnergy, basin.get_volume(), basin.cell_properties(), out_stream)
             type_stats.sample_types(numSteps, job.equilSteps, basin, spec)
 
             if numSteps % job.printFreq == 0:
