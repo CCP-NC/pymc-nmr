@@ -207,7 +207,7 @@ class Statistics:
         self.m_stppres = 0.0
         self.m_stpvir = 0.0
 
-        for i in range(9):
+        for i in range(6):
             self.m_stp_strs[i] = 1.0
             self.m_stp_latvec[i] = vec[i]
             
@@ -230,7 +230,7 @@ class Statistics:
                 self.m_zumpres = sclsum(self.m_nstk,self.m_stkpres,1)
                 self.m_zumvir = sclsum(self.m_nstk,self.m_stkvir,1)
 
-                for i in range(9):
+                for i in range(6):
                     for j in range(self.m_nstk):
                         tmp[j] = self.m_stk_latvec[i*self.m_nstk + j]
                 
@@ -247,7 +247,7 @@ class Statistics:
             self.m_zumenthalpy -= self.m_stkenthalpy[kstk]
             self.m_zumpres -= self.m_stkpres[kstk]
             self.m_zumvir -= self.m_stkvir[kstk]
-            for i in range(9):
+            for i in range(6):
                 self.m_zum_latvec[i] -= 1.0 * self.m_stk_latvec[i*self.m_nstk + kstk]
                #m_zum_strs[i] -= 1.0 * m_stk_strs[kstk][i];
 
@@ -263,7 +263,7 @@ class Statistics:
         self.m_stkpres[kstk] = self.m_stppres
         self.m_stkvir[kstk] = self.m_stpvir
 
-        for i in range(9):
+        for i in range(6):
             self.m_stk_latvec[i*self.m_nstk + kstk] = self.m_stp_latvec[i];
             #m_stk_strs[kstk][i] = m_stp_strs[i];
     
@@ -279,7 +279,7 @@ class Statistics:
         self.m_zumpres += self.m_stppres
         self.m_zumvir += self.m_stpvir
 
-        for i in range(9):
+        for i in range(6):
             self.m_zum_latvec[i] += self.m_stp_latvec[i]
             #m_zum_strs[i] += m_stp_strs[i];
 
@@ -302,7 +302,7 @@ class Statistics:
         self.m_ravepres = self.m_zumpres / self.m_zistk
         self.m_ravevir = self.m_zumvir / self.m_zistk
 
-        for i in range(9):
+        for i in range(6):
             self.m_rave_latvec[i] = self.m_zum_latvec[i] / self.m_zistk;
             #m_rave_strs[i] = m_zum_strs[i] / m_zistk;
 
@@ -323,7 +323,7 @@ class Statistics:
         self.m_flcpres  = sclnv1 * (self.m_flcpres + sclnv2 * pow((self.m_stppres - self.m_avepres ),2))
         self.m_flcvir  = sclnv1 * (self.m_flcvir + sclnv2 * pow((self.m_stpvir - self.m_avevir ),2))
 
-        for i in range(9):
+        for i in range(6):
             self.m_flc_latvec[i]  = sclnv1 * (self.m_flc_latvec[i] + sclnv2 * pow((self.m_stp_latvec[i] - self.m_ave_latvec[i] ),2))
             #self.m_flc_strs[i]  = sclnv1 * (self.m_flc_strs[i] + sclnv2 * pow((self.m_stp_strs[i] - self.m_ave_strs[i] ),2));
 
@@ -339,7 +339,7 @@ class Statistics:
         self.m_avepres = sclnv1 * self.m_avepres + sclnv2 * self.m_stppres
         self.m_avevir = sclnv1 * self.m_avevir + sclnv2 * self.m_stpvir
 
-        for i in range(9):
+        for i in range(6):
             self.m_ave_latvec[i] = sclnv1 * self.m_ave_latvec[i] + sclnv2 * self.m_stp_latvec[i]
             #self.m_ave_strs[i] = sclnv1 * self.m_ave_strs[i] + sclnv2 * self.m_stp_strs[i];
 
@@ -357,7 +357,7 @@ class Statistics:
             self.m_avemany = 0.0
             self.m_avepres = 0.0
             self.m_avevir = 0.0
-            for i in range(9):
+            for i in range(6):
                 self.m_ave_latvec[i] = 0.0
                 #self.m_ave_strs[i] = 0.0;
 
@@ -372,7 +372,7 @@ class Statistics:
             self.m_flcpair = 0.0
             self.m_flcthree = 0.0
             self.m_flcmany = 0.0
-            for i in range(9):
+            for i in range(6):
                 self.m_flc_latvec[i] = 0.0
                 #self.m_flc_strs[i] = 0.0;
     
@@ -387,15 +387,14 @@ class Statistics:
         
 
         if self.m_printlat:
-            outStream.write("\n\n {:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}".format(
+            outStream.write("\n\n cell properties")
+            outStream.write("\n {:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}".format(
                 self.m_stp_latvec[0], self.m_stp_latvec[1], self.m_stp_latvec[2],
                 self.m_rave_latvec[0], self.m_rave_latvec[1], self.m_rave_latvec[2]))
             outStream.write("\n {:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}".format(
                 self.m_stp_latvec[3], self.m_stp_latvec[4], self.m_stp_latvec[5],
                 self.m_rave_latvec[3], self.m_rave_latvec[4], self.m_rave_latvec[5]))
-            outStream.write("\n {:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}".format(
-                self.m_stp_latvec[6], self.m_stp_latvec[7], self.m_stp_latvec[8],
-                self.m_rave_latvec[6], self.m_rave_latvec[7], self.m_rave_latvec[8]))
+            
 
         if iter == equil:
             outStream.write("\n *****************************************************************************************************\n")
@@ -422,7 +421,7 @@ class Statistics:
         self.m_flcthree = math.sqrt(self.m_flcthree)
         self.m_flcmany = math.sqrt(self.m_flcmany)
 
-        for i in range(9):
+        for i in range(6):
             self.m_flc_latvec[i] = math.sqrt(self.m_flc_latvec[i])
             self.m_flc_strs[i] = math.sqrt(self.m_flc_strs[i])
 
@@ -431,22 +430,21 @@ class Statistics:
         
 
         if self.m_printlat:
+            outStream.write("\n\n cell properties")
             outStream.write("\n\n {:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}".format(
                 self.m_ave_latvec[0], self.m_ave_latvec[1], self.m_ave_latvec[2],
                 self.m_flc_latvec[0], self.m_flc_latvec[1], self.m_flc_latvec[2]))
             outStream.write("\n {:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}".format(
                 self.m_ave_latvec[3], self.m_ave_latvec[4], self.m_ave_latvec[5],
                 self.m_flc_latvec[3], self.m_flc_latvec[4], self.m_flc_latvec[5]))
-            outStream.write("\n {:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}{:>15.7e}".format(
-                self.m_ave_latvec[6], self.m_ave_latvec[7], self.m_ave_latvec[8],
-                self.m_flc_latvec[6], self.m_flc_latvec[7], self.m_flc_latvec[8]))
+            
 
 class TypeStatistics:
     def __init__(self):
         self.numSpec = 0
-        self.m_nstk = 10  # Example value, replace with appropriate initialization
-        self.m_sample = 1000  # Example value, replace with appropriate initialization
-        self.m_zistk = 100  # Example value, replace with appropriate initialization
+        self.m_nstk = 0  # Example value, replace with appropriate initialization
+        self.m_sample = 0
+        self.m_zistk = 0  # Example value, replace with appropriate initialization
         self.m_stp_nspc = None
         self.m_ave_nspc = None
         self.m_rave_nspc = None
@@ -454,9 +452,10 @@ class TypeStatistics:
         self.m_flc_nspc = None
         self.m_stk_nspc = None
 
-    def zero_types(self, num_s: int, flag: bool):
+    def zero_types(self, num: int, num_s: int, flag: bool):
         self.numSpec = num_s
-
+        self.m_sample = 0
+        self.m_nstk = num
         if num_s != 0:
             self.m_stp_nspc = np.zeros(num_s)
             self.m_ave_nspc = np.zeros(num_s)
@@ -474,50 +473,63 @@ class TypeStatistics:
         return num_typ
 
     def sample_types(self, iter: int, equil: int, bas: Config, spec:Species):
-        tmp = [0.0] * self.m_nstk
-        sclnv1 = float(self.m_sample - 1) / float(self.m_sample)
-        sclnv2 = 1.0 / float(self.m_sample)
+
+        tmp = np.zeros(self.m_nstk)
 
         for i in range(self.numSpec):
             ele = spec.get_species(i)
-            self.m_stp_nspc[i] = float(self.find_num_types(bas, ele.name))
+            self.m_stp_nspc[i] = float(bas.find_num_types(ele.name))
 
-        kstk = ((iter - 1) % self.m_nstk)
+        kstk = (iter - 1) % self.m_nstk
 
         if iter > self.m_nstk:
             if kstk == 0:
                 for i in range(self.numSpec):
                     for j in range(self.m_nstk):
                         tmp[j] = self.m_stk_nspc[i * self.m_nstk + j]
-                    self.m_zum_nspc[i] = sclsum(self.m_nstk, tmp, 1)
-
+                    self.m_zum_nspc[i] = np.sum(tmp)
+                    
             for i in range(self.numSpec):
-                self.m_zum_nspc[i] -= 1.0 * self.m_stk_nspc[i * self.m_nstk + kstk]
+                self.m_zum_nspc[i] -= self.m_stk_nspc[i * self.m_nstk + kstk]
 
         for i in range(self.numSpec):
             self.m_stk_nspc[i * self.m_nstk + kstk] = self.m_stp_nspc[i]
+
+        for i in range(self.numSpec):
             self.m_zum_nspc[i] += self.m_stp_nspc[i]
 
+        # calculate rolling averages
+        if self.m_nstk < iter:
+            self.m_zistk = self.m_nstk
+        else:
+            self.m_zistk = iter
         for i in range(self.numSpec):
             self.m_rave_nspc[i] = self.m_zum_nspc[i] / self.m_zistk
 
+        # accumulate totals over steps
+        self.m_sample += 1
+        sclnv1 = float(self.m_sample - 1) / float(self.m_sample)
+        sclnv2 = 1.0 / float(self.m_sample)
+
         for i in range(self.numSpec):
-            self.m_flc_nspc[i] = sclnv1 * (self.m_flc_nspc[i] + sclnv2 * pow((self.m_stp_nspc[i] - self.m_ave_nspc[i]), 2))
+            diff = self.m_stp_nspc[i] - self.m_ave_nspc[i]
+            self.m_flc_nspc[i] = sclnv1 * (self.m_flc_nspc[i] + sclnv2 * (diff ** 2))
 
         for i in range(self.numSpec):
             self.m_ave_nspc[i] = sclnv1 * self.m_ave_nspc[i] + sclnv2 * self.m_stp_nspc[i]
 
         if iter <= equil:
+            self.m_sample = 0
             for i in range(self.numSpec):
                 self.m_ave_nspc[i] = 0.0
                 self.m_flc_nspc[i] = 0.0
-
+     
     def check_point_types(self, spec: Species, out_stream):
         out_stream.write("\n\n number of atom types ")
         for i in range(self.numSpec):
             ele = spec.get_species(i)
             symbol = ele.name
-            out_stream.write(f"\n {symbol} {self.m_stp_nspc[i]:.5e} {self.m_rave_nspc[i]:.5e}")
+            out_stream.write(f"\n {symbol}            {self.m_stp_nspc[i]:.5e} {self.m_rave_nspc[i]:.5e}")
         out_stream.flush()
 
     def last_summary_types(self, spec: Species, out_stream):

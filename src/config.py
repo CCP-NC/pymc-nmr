@@ -494,8 +494,9 @@ class Config (object):
         cell_prop[2] = np.linalg.norm(self.vectors[2, :])  # Length of third row vector
 
         # Calculate cosines of cell angles
-        cell_prop[3] = np.dot(self.vectors[0, :], self.vectors[1, :]) / (cell_prop[0] * cell_prop[1]) #alpha
-        cell_prop[4] = np.dot(self.vectors[0, :], self.vectors[2, :]) / (cell_prop[0] * cell_prop[2]) #beta
-        cell_prop[5] = np.dot(self.vectors[1, :], self.vectors[2, :]) / (cell_prop[1] * cell_prop[2]) #gamma
-    
+        fact = 1.0 / (3.14159265358979323846264338328 / 180.0)
+        cell_prop[5] = fact * np.arccos(np.dot(self.vectors[0, :], self.vectors[1, :]) / (cell_prop[0] * cell_prop[1])) #gamma
+        cell_prop[4] = fact * np.arccos(np.dot(self.vectors[0, :], self.vectors[2, :]) / (cell_prop[0] * cell_prop[2])) #beta
+        cell_prop[3] = fact * np.arccos(np.dot(self.vectors[1, :], self.vectors[2, :]) / (cell_prop[1] * cell_prop[2])) #galpha
+
         return cell_prop

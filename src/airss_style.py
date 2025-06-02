@@ -80,7 +80,7 @@ class AirssStyle:
 
         # Initiate the statistics
         stats.zero(1000, 0.0, False)
-        type_stats.zero_types(spec.get_num_species(), False) 
+        type_stats.zero_types(1000, spec.get_num_species(), False) 
         
         fld.setup()
 
@@ -111,7 +111,7 @@ class AirssStyle:
                 basin.write_config(archive_io, total_energy=totalEnergy.get_total_energy(), iteration=numSteps)
                 archive_io.close()
             
-            stats.sample(job.equilSteps, numSteps, totalEnergy, basin.get_volume(), basin.vectors.flatten(), out_stream)
+            stats.sample(job.equilSteps, numSteps, totalEnergy, basin.get_volume(), basin.cell_properties(), out_stream)
             type_stats.sample_types(numSteps, job.equilSteps, basin, spec)
 
             if numSteps % job.printFreq == 0:
