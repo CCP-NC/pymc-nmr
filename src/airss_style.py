@@ -39,7 +39,6 @@ class AirssStyle:
                 for i in range(numSpec):
                     ele = spec.get_species(i)
                     if ele.name == job.swapType1[j]:
-                        self.swapType1.append(job.swapType1[j])
                         found = True
                         ele1 = ele
                         break
@@ -53,7 +52,6 @@ class AirssStyle:
                 for i in range(numSpec):
                     ele = spec.get_species(i)
                     if ele.name == job.swapType2[j]:
-                        self.swapType2.append(job.swapType2[j])
                         found = True
                         ele2 = ele
                         break
@@ -63,13 +61,10 @@ class AirssStyle:
                     out_stream.flush()
                     exit(EXIT_FAILURE)
 
-                if ele1.charge != ele2.charge:
-                    self.chargedSwap = True
-
     def initialise(self, spec, job, out_stream):
-        pass
+        
         #setup the BasinHopWalker calculation and the moves
-        #self._setupBasinHop(spec, job, out_stream)
+        self._setup_airss(spec, job, out_stream)
 
     
     def run(self, spec: Species, fld: Field, job: JobControl, stats: Statistics, type_stats: TypeStatistics, basin: Config, numSteps, cycle, 
@@ -83,6 +78,12 @@ class AirssStyle:
         type_stats.zero_types(1000, spec.get_num_species(), False) 
         
         fld.setup()
+
+        if job.restart == False: #if there is restart then randomise the initial config
+            old_pos = basin.get_positions()
+            out_stream.write("\n creating a random configuration at start")
+            for i in range(job.num_swap_atoms):
+                basin.randomise(job.swapType1[i], job.swapType2[i], old_pos)
 
         new_basin = basin.create_atoms_object()
         totalEnergy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol)
@@ -179,12 +180,12 @@ class AirssStyle:
         
         j = int(np.random.random() * float(len(job.swapType1)))
 
-        new_cfg = basin.copy_config()  # make a temprary config
+        old_pos = basin.get_positions()  # make a temprary config
 
-        new_cfg.randomise(job.swapType1[j], job.swapType2[j], basin.pos)
+        basin.randomise(job.swapType1[j], job.swapType2[j], old_pos)
 
         new_energy = Energy()
-        new_basin = new_cfg.create_atoms_object()
+        new_basin = basin.create_atoms_object()
         #write(filename="shuffled.xyz", images=new_basin, format="extxyz", append=False)
         new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol)
         
@@ -201,5 +202,7 @@ class AirssStyle:
                  write(filename="downhill.xyz", images=new_basin, format="extxyz", append=True)
             
             basin.update_from_atoms(new_basin) # update the saved basin
+
+        else:
+            basin.set_positions(old_pos)
         
-    

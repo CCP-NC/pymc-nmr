@@ -82,7 +82,7 @@ class Config (object):
 
         #for i in range(self.natoms):
         #    print("update", self.symbol[i], self.pos[i,:])
-    def setup_configuration(self, spec: Species):
+    def setup_configuration(self, spec: Species, out_io):
         """Takes a list of the element types and puts the mass and charge on each atom
         The function also checks that all the species defined in the basin.xyz are present in the
         element list
@@ -94,17 +94,25 @@ class Config (object):
 
         for i in range(self.natoms):
 
+            found = False
+
             for k in range(spec.get_num_species()):
                 element = spec.get_species(k)
                 if self.symbol[i] == element.name:
                     self.label[i] = k 
                     self.charge[i] = element.charge
                     self.mass[i] = element.mass
+                    found = True
 
             if "ghost" in self.symbol[i]:
                 self.numghost += 1
             elif self.numghost > 1:
                 print("the ghost atoms must come last!")
+                exit()
+
+            if found == False:
+                out_io.write(f"\n the atom type {self.symbol[i]} was not found in the potential file")
+                out_io.flush()
                 exit()
                 
     
@@ -131,7 +139,10 @@ class Config (object):
         c.pbc = self.pbc
         c.natoms = self.natoms
         c.numghost = self.numghost
-        c.symbol = self.symbol
+
+        c.symbol = []
+        for i in range(c.natoms):
+            c.symbol.append(self.symbol[i])
 
         c.pos = np.zeros((self.natoms,3), dtype=np.float64)
         c.charge = np.zeros(self.natoms, dtype=np.float64)
@@ -195,22 +206,22 @@ class Config (object):
                 swap_list.append(i)
                 shuffle_list.append(i)
 
-        #for i in range(self.natoms):
-        #    if self.symbol[i] == "K" or self.symbol[i] == "ghost":
-        #        print(i, self.pos[i,:])
+        for i in range(self.natoms):
+            if self.symbol[i] == "K" or self.symbol[i] == "ghost":
+                print(i, self.pos[i,:])
 
-        #print("unshuffled ", shuffle_list)
+        print("unshuffled ", shuffle_list)
 
         np.random.shuffle(shuffle_list)
-        #print("shuffled ", shuffle_list)
+        print("shuffled ", shuffle_list)
         for i in range(len(swap_list)):
             na = swap_list[i]
             nb = shuffle_list[i]
             self.pos[na,:] = positions[nb,:]
 
-        #for i in range(self.natoms):
-        #    if self.symbol[i] == "K" or self.symbol[i] == "ghost":
-        #        print(i, self.pos[i,:])
+        for i in range(self.natoms):
+            if self.symbol[i] == "K" or self.symbol[i] == "ghost":
+                print(i, self.pos[i,:])
 
     def find_num_types(self, typ: str) -> int:
         """ determines the number of a given type of atom and returns it as an integer """
@@ -421,10 +432,17 @@ class Config (object):
         for i in range(self.natoms):
            self.pos[i,:] *= bulks[:]
 
-    #def cell_size(self, basin) -> np.float64:
+    def get_positions(self):
+        pos = np.zeros((self.natoms,3), dtype=np.float64)
         
-   #     return basin.get_volume()
+        np.copyto(pos, self.pos)
+
+        return pos
     
+    def set_positions(self, pos):
+        
+        np.copyto(self.pos, pos)
+
     def restore_cell(self, basin, bulks, indx):
         cell = basin.get_cell()
 

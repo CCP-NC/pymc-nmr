@@ -61,7 +61,7 @@ def main():
     try:
         instream = open(basisFileName, "r")
         restart_iteration, restart_time, restart_energy = basin.read_config(instream)
-        basin.setup_configuration(spec)
+        basin.setup_configuration(spec, out_stream)
     except FileNotFoundError:
         out_stream.write("\n*** could not find configuration file: basin.xyz \n")
         sys.exit(1)

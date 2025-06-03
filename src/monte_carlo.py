@@ -204,12 +204,8 @@ class MonteCarlo:
             self.mcMoveList[j] = 2
             j += 1
 
-        for i in range(job.transmutateFrequency):
-            self.mcMoveList[j] = 3
-            j += 1
-
         for i in range(job.volMoveFreq):
-            self.mcMoveList[j] = 5
+            self.mcMoveList[j] = 3
             j += 1
 
 
@@ -247,7 +243,7 @@ class MonteCarlo:
 
         if job.restart == False:
             archive_io = open("archive.xyz", "w")
-            basin.write_config(archive_io, totalEnergy=totalEnergy.get_total_energy(), iteration=0)
+            basin.write_config(archive_io, total_energy=totalEnergy.get_total_energy(), iteration=0)
             archive_io.close()
 
         numSteps = 1
@@ -264,10 +260,7 @@ class MonteCarlo:
             elif selection == 2:
                 self.swapAtoms(basin, fld, totalEnergy, job, beta, out_stream)
 
-            elif selection == 3:
-                self.transmutateAtoms(basin, fld, totalEnergy, spec, beta, out_stream)
-
-            elif selection == 5:               
+            elif selection == 3:               
                  self.move_volume(basin, fld, totalEnergy, spec, job, beta, out_stream)
 
             stats.sample(job.equilSteps, numSteps, totalEnergy, basin.get_volume(), basin.cell_properties(), out_stream)
@@ -326,6 +319,8 @@ class MonteCarlo:
                 if abs(eDiff) > 1.0e-6:
                     out_stream.write(f"\n sanity check failed on iteration {numSteps} !!!!!!!\n")
                     out_stream.write(f" total diff {eDiff.totalEnergy:.10e}\n")
+                else:
+                    out_stream.write(f"\n sanity check passed  on iteration {numSteps} \n")
                         
                 totalEnergy.totalEnergy = checkEnergy.totalEnergy
 
@@ -373,22 +368,6 @@ class MonteCarlo:
             swapRatio = self.successfulSwaps / self.attemptedSwaps
             out_stream.write(f"\n swaps : attempted, successful and ratio {self.attemptedSwaps} {self.successfulSwaps} {swapRatio:.10e}\n")
 
-        if self.numTrans > 0:
-            forwardRatio = self.forwardMutations / self.attemptForwardMutations
-            backwardRatio = self.backwardMutations / self.attemptBackwardMutations
-            out_stream.write(f"\n forward mutations : attempted, successful and ratio {self.attemptForwardMutations} "
-                            f"{self.forwardMutations} {forwardRatio:.10e}\n")
-            out_stream.write(f" backward mutations : attempted, successful and ratio {self.attemptBackwardMutations} "
-                        f"{self.backwardMutations} {backwardRatio:.10e}\n")
-
-        if self.numSemiWidom > 0:
-            out_stream.write(f"\n forward semi-widom mutations {self.forwardSemiWidom}\n")
-            out_stream.write(f" backward semi-widom mutations {self.backwardSemiWidom}\n")
-
-        #if self.attemptedGCFragRemoves > 0:
-        #    out_stream.write(f"\n the number of fragment removes {self.successFulGCFragRemoves} attempted {self.attemptedGCFragRemoves}\n")
-        #if self.attemptedGCFragInsert > 0:
-        #    out_stream.write(f"\n the number of fragment inserts {self.successFulGCFragInsert} attempted {self.attemptedGCFragInsert}\n")
 
         out_stream.flush()
 
@@ -424,7 +403,7 @@ class MonteCarlo:
         
         deltaV = energy_new.get_total_energy() - energy_old.get_total_energy()
         deltaVB = deltaV * beta
-        print("swap ", energy_old.get_total_energy(), energy_new.get_total_energy(), deltaV, deltaVB)
+        print("smove ", energy_old.get_total_energy(), energy_new.get_total_energy(), deltaV, deltaVB)
         #energyDifference.print_energy(0, out_stream)
         accept = False
         arg = np.random.random()
@@ -439,7 +418,6 @@ class MonteCarlo:
                 out_stream.write(f"{e} whilst moving atom {atm} \n")
                 accept = False
             
-        
         if accept:
             #update the total energy (basin can remain the same)
             total_energy.totalEnergy = energy_new.totalEnergy
@@ -540,6 +518,7 @@ class MonteCarlo:
         if accept:
             totalEnergy.totalEnergy = new_energy.totalEnergy
             self.successfulSwaps += 1
+            basin.update_from_atoms(new_basin)
 
         else:
             basin.swap_atom_positions(atm1, atm2)

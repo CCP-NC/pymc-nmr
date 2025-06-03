@@ -124,15 +124,6 @@ class JobControl:
                         words = line.split()
                         self.swapType1.append(words[0])
                         self.swapType2.append(words[1])
-                elif subWord == "transmutate":
-                    self.num_transmutate_atoms = int(words[2])
-                    self.transmutateFrequency = int(words[3])
-                    for _ in range(self.num_transmutate_atoms):
-                        line = in_stream.readline()
-                        words = line.split()
-                        self.mutateType1.append(words[0])
-                        self.mutateType2.append(words[1])
-                        self.transmuteChemPot.append(float(words[2]))
                 elif subWord == "moldyn":
                     self.mdMoveFreq = int(words[2])
             elif keyWord == "symmetry":
