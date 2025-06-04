@@ -52,8 +52,93 @@ class JobControl:
         self.relsteps = 1000
         self.reltol = 1e-3
         
-    def check_job_control(self, out_stream):
-        pass  # Implement parameter check logic if needed
+    def write_mc_control(self, out_io):
+        
+        out_io.write(f"\n the number of steps                      {self.mcSteps} \n")
+        out_io.write(f"\n pressure                                 {self.extPressure} \n")
+        out_io.write(f"\n temperature                              {self.temperature} \n")
+        out_io.write(f"\n max atom displacement                    {self.maxDistance} \n")
+        out_io.write(f"\n max volume displacement                  {self.maxVolDisplacement} \n")
+        out_io.write(f"\n sanity check frequency                   {self.sanityCheckFreq} \n")
+        out_io.write(f"\n print frequency                          {self.printFreq} \n")
+        if self.dumpArchive == True:
+            out_io.write(f"\n archive configuration frequency          {self.archiveFrequency} \n")
+        out_io.write(f"\n equilibration steps                      {self.equilSteps} \n")
+        if len(self.moveTypes) > 0:
+            out_io.write(f"\n atom types to be moved \n")
+            for i in range(len(self.moveTypes)):
+                out_io.write(f"\n         {self.moveTypes[i]}")
+
+            out_io.write(f"\n atom move frequency                      {self.atomMoveFreq} \n")
+        
+        if self.volMoveFreq > 0:
+            out_io.write(f"\n volume move frequency                    {self.volMoveFreq} \n")
+
+            if self.volMoveSymmetry == 0:
+                out_io.write(f"\n volume move symmetry                     cubic \n")
+            elif self.volMoveSymmetry == 1:
+                out_io.write(f"\n volume move symmetry                     tetragonal \n")
+            elif self.volMoveSymmetry == 1:
+                out_io.write(f"\n volume move symmetry                     orthorhombic \n")
+            else:
+                out_io.write(f"\n volume move symmetry not recognised \n")
+                out_io.flush()
+                exit()
+
+        if self.num_swap_atoms > 0:
+            out_io.write(f"\n atom types to be swapped \n")
+            for i in range(len(self.moveTypes)):
+                out_io.write(f"\n         {self.swapType1[i]}  {self.swapType2[i]}")
+                    
+            out_io.write(f"\n atom swap frequency                      {self.swapFrequency} \n")
+
+    def write_bh_control(self, out_io):
+        
+        out_io.write(f"\n the number of steps                      {self.mcSteps} \n")
+        out_io.write(f"\n temperature                              {self.temperature} \n")
+        out_io.write(f"\n print frequency                          {self.printFreq} \n")
+        if self.dumpArchive == True:
+            out_io.write(f"\n archive configuration frequency          {self.archiveFrequency} \n")
+        out_io.write(f"\n equilibration steps                      {self.equilSteps} \n")
+        if self.save_downhill == True:
+            out_io.write(f"\n energy moves to a lower energy will be saved \n")
+            
+        if self.num_swap_atoms > 0:
+            out_io.write(f"\n atom types to be swapped \n")
+            for i in range(len(self.moveTypes)):
+                out_io.write(f"\n         {self.swapType1[i]}  {self.swapType2[i]}")
+                    
+            out_io.write(f"\n atom swap frequency                      {self.swapFrequency} \n")
+
+        if self.mdMoveFreq > 0:
+            out_io.write(f"\n an MD will be undertaken with frequency  {self.mdMoveFreq} \n")
+            out_io.write(f"\n  MD timestep                             {self.timestep} \n")
+            out_io.write(f"\n  MD temperature                          {self.mdtemperature_K} \n")
+            out_io.write(f"\n  MD friction                             {self.mdfriction} \n")
+            out_io.write(f"\n  MD steps                                {self.mdsteps} \n")
+
+        
+        out_io.write(f"\n  relaxation method                       {self.relmethod} \n")
+        out_io.write(f"\n  relaxation steps                        {self.relsteps} \n")
+        out_io.write(f"\n  relaxation tolerance                    {self.reltol} \n")
+
+    def write_airss_control(self, out_io):
+        
+        out_io.write(f"\n the number of steps                      {self.mcSteps} \n")
+        
+        out_io.write(f"\n print frequency                          {self.printFreq} \n")
+        
+            
+        if self.num_swap_atoms > 0:
+            out_io.write(f"\n atom types to be swapped \n")
+            for i in range(len(self.moveTypes)):
+                out_io.write(f"\n         {self.swapType1[i]}  {self.swapType2[i]}")
+                    
+            out_io.write(f"\n atom swap frequency                      {self.swapFrequency} \n")
+
+        out_io.write(f"\n  relaxation method                       {self.relmethod} \n")
+        out_io.write(f"\n  relaxation steps                        {self.relsteps} \n")
+        out_io.write(f"\n  relaxation tolerance                    {self.reltol} \n")   
 
     def read_job_control(self, in_stream, out_stream):
         while True:

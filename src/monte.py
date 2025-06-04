@@ -67,10 +67,13 @@ def main():
         sys.exit(1)
 
     if job.structure_method == "basinhop":
+        job.write_bh_control(out_stream)
         bh.initialise(spec, job, out_stream)
     elif job.structure_method == "airss":
+        job.write_airss_control(out_stream)
         ai.initialise(spec, job, out_stream)
     elif job.structure_method == "monte":
+        job.write_mc_control(out_stream)
         mc.initialise(spec, job, out_stream)
     else:
         out_stream.write("\n*** unrecognised structure search method \n")
