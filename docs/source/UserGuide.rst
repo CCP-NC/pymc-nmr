@@ -2,7 +2,40 @@
 1. Introduction
 ===============
 
-Some pre-amble about the methods in the 
+Pymc-nmr has three modes of operation that are based on swap moves. A swap move is where the positions of two atoms, that are chosen at random, are interchanged.
+For example, the two atoms outlined in red in the figure below.
+
+.. image:: swap-move.png
+  :width: 400
+
+The difference in energy of the old (*o*) and new (*n*) cells is calculated and employed within the Metropolis-Hastings sampling. Thus the move is accepted with
+the probability
+
+:math:`acc(o \rightarrow n) = min(1, exp(- \beta [E_{n} - E_{o}]))`
+
+---------------
+1.1 Monte Carlo
+---------------
+
+This is the standard Monte Carlo method described in the book by Frenkel and Smit and is very similar in style to DL_MONTE. Note as a *single* particle is moved
+at a time it tends to be very slow and is only useful where the difference in energy is small.
+
+-----------------
+1.2 Basin Hopping
+-----------------
+
+The basin hopping approach is useful when the difference in energy between swapped particles is large. Each swap of particles is followed by an energy minimisation. The 
+difference in energy is taken after the minimisation and the Metropolis selection rule applied. Although the calculation of the energy consumes more resources
+the probability of the swap being accepted is significantly greater. 
+In some cases the position of a particle is not known and we have created the possibility of using a NVT molecular dynamics calculation followed by energy minimisation
+to further reduce the total energy of the cell.
+
+----------------------------
+1.2 Randomised Configuration
+----------------------------
+
+The last method is an ab initio random structure search method. In this approach all the particles of two specific type are swapped and an energy minimisation performed.
+In out limited experience, this the basin hooping method is more efficient than this technique.
 
 ===============
 2. Installation
@@ -96,31 +129,41 @@ Description of keywords to control the relaxation in basin hopping or AIRSS styl
 | relsteps       | int         | The number of relaxation steps (default 1000)        |
 +----------------+-------------+------------------------------------------------------+
 
-
-+----------------+-------------+------------------------------------------------------+
-| **Key word**   |  **Functionality**                                    |
-+================+=============+======================================================+
+These keywords follow the *move* command in the control file.
++----------------+--------------------------------------------------------------------+
+| **Key word**   |  **Functionality**                                                 |
++================+====================================================================+
 | atoms          | The *atoms* keyword must be followed the number of atom types to   |
 |                | be moved and the probability of the move occuring. It is only      |
 |                | active in Monte Carlo simulations. An example is                   |
-|                | move atoms 2 100                                                   |
-|                | Si                                                                 |
-|                | O                                                                  |
-+----------------+-------------+------------------------------------------------------+
++----------------+--------------------------------------------------------------------+
 | swap           | Swaps interchange the positions of two types. The number of atom   |
 |                | pairs and the probability of the move occuring. It is only         |
-|                | active in all types of calculation. An example is                  |
-|                | move swap 2 100                                                    |
-|                | Si  Al                                                             |
-|                | K   ghost   (the fictitious particle must be called ghost)         |
-+----------------+-------------+------------------------------------------------------+
+|                | active in all types of calculation.                                |
++----------------+--------------------------------------------------------------------+
 | moldyn         | This activates an NVT molecular dynamics calculation (only within  |
 |                | basin hopping). An integer gives the probability of this ooccuring.|
-+----------------+-------------+------------------------------------------------------+
++----------------+--------------------------------------------------------------------+
 | volume         | A volume move within the monte Carlo method only An integer gives  | 
 |                | the probability of this ooccuring.                                 | 
-+----------------+-------------+------------------------------------------------------+
++----------------+--------------------------------------------------------------------+
 
+An example ov *move atom* ::
+
+   move atoms 2 100                                                  
+   Si                                                                 
+   O        
+   
+An example of *swap* ::
+   move swap 2 100                                                    
+   Si  Al                                                             
+   K   ghost   (the fictitious particle must be called ghost) 
+
+How to use molecular dynamics in basin hopping::
+   move moldyn 20
+
+Using the volume move in Monte Carlo::
+   move volume 20
 
 ---------
 3.2 basis
