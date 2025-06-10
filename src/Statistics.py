@@ -284,7 +284,7 @@ class Statistics:
             #m_zum_strs[i] += m_stp_strs[i];
 
         #calculate rolling averages
-
+        #print(self.m_nstk, iter)
         if self.m_nstk < iter:
             self.m_zistk = self.m_nstk
         else:

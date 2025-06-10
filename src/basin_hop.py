@@ -341,7 +341,7 @@ class BasinHop:
         new_basin = basin.create_atoms_object()
 
         #run an md simulation
-        fld.run_md(new_basin, job.timestep, job.mdtemperature_K, job.mdfriction, job.mdsteps)
+        fld.run_md(new_basin, job.mdtimestep, job.mdtemperature_K, job.mdfriction, job.mdsteps)
 
         new_energy = Energy()
         #the energy needs to be relaxed to get the "new" energy

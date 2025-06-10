@@ -283,7 +283,7 @@ class Config (object):
         """
         reads in the simplified xyz file. very simplified for at the moment
         """
-        restart_iteration = 0
+        restart_iteration = 1
         restart_time = 0.0
         restart_energy = 0.0
 

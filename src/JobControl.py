@@ -112,7 +112,7 @@ class JobControl:
 
         if self.mdMoveFreq > 0:
             out_io.write(f"\n an MD will be undertaken with frequency  {self.mdMoveFreq} \n")
-            out_io.write(f"\n  MD timestep                             {self.timestep} \n")
+            out_io.write(f"\n  MD timestep                             {self.mdtimestep} \n")
             out_io.write(f"\n  MD temperature                          {self.mdtemperature_K} \n")
             out_io.write(f"\n  MD friction                             {self.mdfriction} \n")
             out_io.write(f"\n  MD steps                                {self.mdsteps} \n")
