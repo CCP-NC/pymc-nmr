@@ -226,7 +226,7 @@ class BasinHop:
 
                 if abs(eDiff) > 1.0e-6:
                     out_stream.write(f"\n sanity check failed on iteration {numSteps} !!!!!!!\n")
-                    out_stream.write(f" total diff {eDiff.totalEnergy:.10e}\n")
+                    out_stream.write(f" total diff {eDiff:.10e}\n")
                         
                 totalEnergy.totalEnergy = checkEnergy.totalEnergy
 
@@ -336,7 +336,7 @@ class BasinHop:
         
         self.md_runs += 1
 
-        j = int(np.random.random() * self.numSwaps)
+        old_pos = basin.get_positions() 
         
         new_basin = basin.create_atoms_object()
 
@@ -347,7 +347,11 @@ class BasinHop:
         #the energy needs to be relaxed to get the "new" energy
         new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol)
         
-        totalEnergy.totalEnergy = new_energy.totalEnergy
+        if new_energy.totalEnergy > 1.0e5:   # ie it has failed to minimisa - this prevents it going into a stupid position
 
-        basin.update_from_atoms(new_basin)
+            basin.set_positions(old_pos)
+        else:
+            totalEnergy.totalEnergy = new_energy.totalEnergy
+
+            basin.update_from_atoms(new_basin)
         
