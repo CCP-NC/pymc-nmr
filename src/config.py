@@ -353,7 +353,7 @@ class Config (object):
        
         return restart_iteration, restart_time, restart_energy
     
-    def expand_cell_cubic(self, basin, bulks, max_vol_change):
+    def expand_cell_cubic(self, bulks, max_vol_change):
         r = np.random.random()
         
         scale = 1.0 + (r - 0.5) * max_vol_change
@@ -370,7 +370,7 @@ class Config (object):
         bulks[1] = scale
         bulks[2] = scale
 
-        self.scale_positions(basin, bulks)
+        self.scale_positions(bulks)
 
         return volume
    
@@ -399,9 +399,9 @@ class Config (object):
 
         return volume
        
-    def expand_cell_orthorhombic(self, basin, indx, bulks, max_vol_change):
+    def expand_cell_orthorhombic(self, indx, bulks, max_vol_change):
         r = np.random.random()
-        cell = basin.get_cell()
+        cell = self.vectors
 
         scale = 1.0 + (r - 0.5) * max_vol_change
 
@@ -423,7 +423,7 @@ class Config (object):
 
         volume = self.get_volume()
         
-        self.scale_positions(basin, bulks)
+        self.scale_positions(bulks)
 
         return volume
 
@@ -442,6 +442,17 @@ class Config (object):
     def set_positions(self, pos):
         
         np.copyto(self.pos, pos)
+
+    def get_vectors(self):
+        vec = np.zeros((3,3), dtype=np.float64)
+        
+        np.copyto(vec, self.vectors)
+
+        return vec
+    
+    def set_vectors(self, vec):
+        
+        np.copyto(self.vectors, vec)
 
     def restore_cell(self, basin, bulks, indx):
         cell = basin.get_cell()

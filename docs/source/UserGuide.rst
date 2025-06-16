@@ -18,7 +18,8 @@ the probability
 ---------------
 
 This is the standard Monte Carlo method described in the book by Frenkel and Smit and is very similar in style to DL_MONTE. Note as a *single* particle is moved
-at a time it tends to be very slow and is only useful where the difference in energy is small.
+at a time it tends to be very slow and is only useful where the difference in energy is small. However, using the small MACE model the length of the simulations are more acceptable
+and the method is capable of getting you out of a jam if the forces in your structure are very high.
 
 -----------------
 1.2 Basin Hopping
@@ -127,6 +128,31 @@ Description of keywords to control the relaxation in basin hopping or AIRSS styl
 | reltol         | float       | tolerence for convergence                            |
 +----------------+-------------+------------------------------------------------------+
 | relsteps       | int         | The number of relaxation steps (default 1000)        |
++----------------+-------------+------------------------------------------------------+
+
+The keywords that are specific to MC simulations only:
+
++----------------+-------------+------------------------------------------------------+
+| **Key word**   | **Type**    | **Functionality**                                    |
++================+=============+======================================================+
+| maxdistance    | float       | the maximum atomic displacement. The default is      |
+|                |             | 0.001                                                |
++----------------+-------------+------------------------------------------------------+
+| distanceupdate | int         | The number of MC steps between the updates of the    |
+|                |             | max displacement to acieve the target ratio below    |
++----------------+-------------+------------------------------------------------------+
+| distanceratio  | float       | The target ratio for the acceptance / rejection of   |
+|                |             | particle displacements                               |
++----------------+-------------+------------------------------------------------------+
+| maxvolume      | float       | the maximumvolume displacement. The default is       |
+|                |             | 0.001                                                |
++----------------+-------------+------------------------------------------------------+
+| volupdate      | int         | The number of MC steps between the updates of the    |
+|                |             | max volume displacement to acieve the target ratio   |
+|                |             | below                                                |
++----------------+-------------+------------------------------------------------------+
+| volratio       | float       | The target ratio for the acceptance / rejection of   |
+|                |             | volume expansion / contraction                       |
 +----------------+-------------+------------------------------------------------------+
 
 These keywords follow the *move* command in the control file.

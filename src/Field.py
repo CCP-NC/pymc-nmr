@@ -80,7 +80,11 @@ class Field:
             print("a model name is required")
             exit(-1)
         
-        self.janCalc = choose_calculator(architecture=self.arch, model=self.model, precision=self.precision, device=self.device)
+        try:
+            self.janCalc = choose_calculator(architecture=self.arch, model=self.model, precision=self.precision, device=self.device)
+        except Exception as e:
+            print(f"{e} whilst trying to load {self.model}\n")
+            exit()
 
 
         self.first_setup = False

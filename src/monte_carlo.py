@@ -435,25 +435,28 @@ class MonteCarlo:
     def move_volume(self, basin: Config, fld: Field, totalEnergy: Energy, spec: Species, job: JobControl, beta: float, out_stream):
         indx = 0
         vol_new = 1.0
-        natoms = len(basin)
+        natoms = basin.natoms
 
         betaInv = 1.0 / beta
 
-        oldEnergy = totalEnergy
-        vol_old = self.cell_size(basin)
+        oldEnergy = Energy()
+        oldEnergy.totalEnergy = totalEnergy.totalEnergy
+        vol_old = basin.get_volume()
+        old_vec = basin.get_vectors()
+        old_pos = basin.get_positions()
 
         bulks = np.ones(3, dtype=np.float64)
         
         if job.volMoveSymmetry == 0:
             indx = 0
             maxVol = self.maxVolChange[0]
-            vol_new = self.expand_cell_cubic(basin, bulks, maxVol)
+            vol_new = basin.expand_cell_cubic(bulks, maxVol)
         elif job.volMoveSymmetry == 1:
             indx = int(2.0 * np.random.random())
-            vol_new = self.expand_cell_tetragonal(basin, indx, bulks, self.maxVolChange)
+            vol_new = basin.expand_cell_tetragonal(indx, bulks, self.maxVolChange)
         elif job.volMoveSymmetry == 2:
             indx = int(3.0 * np.random.random())
-            vol_new = self.expand_cell_orthorhombic(basin, indx, bulks, self.maxVolChange)
+            vol_new = basin.expand_cell_orthorhombic(indx, bulks, self.maxVolChange)
         else:
             pass  # Implement other volume changes if needed
         
@@ -461,7 +464,8 @@ class MonteCarlo:
         self.totalVolChanges[indx] += 1
 
         new_energy = Energy()
-        new_energy = fld.calculate_energy(basin)
+        new_basin = basin.create_atoms_object()
+        new_energy = fld.calculate_energy(new_basin)
 
         deltav = new_energy.get_total_energy() - oldEnergy.get_total_energy()
         #print("energies", new_energy.get_total_energy(), oldEnergy.get_total_energy(), deltav)
@@ -476,7 +480,8 @@ class MonteCarlo:
             self.successful_vol_change[indx] += 1
 
         else:
-            self.restore_cell(basin, bulks, indx)
+            basin.set_positions(old_pos)
+            basin.set_vectors(old_vec)
 
     def swapAtoms(self, basin: Config, fld: Field, totalEnergy: Energy, job: JobControl, beta: np.float64, out_stream):
         
@@ -518,7 +523,7 @@ class MonteCarlo:
         if accept:
             totalEnergy.totalEnergy = new_energy.totalEnergy
             self.successfulSwaps += 1
-            basin.update_from_atoms(new_basin)
+            #basin.update_from_atoms(new_basin)
 
         else:
             basin.swap_atom_positions(atm1, atm2)

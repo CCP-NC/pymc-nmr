@@ -10,7 +10,7 @@ class JobControl:
         self.num_boxes = 1
         self.extPressure = 0.0
         self.temperature = 0.0
-        self.maxDistance: np.float64 = 0.0
+        self.maxDistance: np.float64 = 0.001
         self.accAtomMoveUpdate = 1000
         self.acceptAtomMoveRatio = 0.37
         self.acceptVolUpdate = 1000
@@ -70,6 +70,10 @@ class JobControl:
                 out_io.write(f"\n         {self.moveTypes[i]}")
 
             out_io.write(f"\n atom move frequency                      {self.atomMoveFreq} \n")
+
+            out_io.write(f"\n maximum atom displacement {self.maxDistance} \n")
+            out_io.write(f"\n max displacement update every {self.accAtomMoveUpdate} steps \n")
+            out_io.write(f"\n acceptance move ratio {self.acceptAtomMoveRatio} \n")
         
         if self.volMoveFreq > 0:
             out_io.write(f"\n volume move frequency                    {self.volMoveFreq} \n")
@@ -85,9 +89,14 @@ class JobControl:
                 out_io.flush()
                 exit()
 
+            
+            out_io.write(f"\n maximum volume expansion {self.acceptVolUpdate} \n")
+            out_io.write(f"\n volume acceptance ratio {self.acceptVolMoveRatio} \n")
+            out_io.write(f"\n max volume displacement updated every {self.maxVolDisplacement} steps \n")
+
         if self.num_swap_atoms > 0:
             out_io.write(f"\n atom types to be swapped \n")
-            for i in range(len(self.moveTypes)):
+            for i in range(len(self.swapType1)):
                 out_io.write(f"\n         {self.swapType1[i]}  {self.swapType2[i]}")
                     
             out_io.write(f"\n atom swap frequency                      {self.swapFrequency} \n")
@@ -105,7 +114,7 @@ class JobControl:
             
         if self.num_swap_atoms > 0:
             out_io.write(f"\n atom types to be swapped \n")
-            for i in range(len(self.moveTypes)):
+            for i in range(len(self.swapType1)):
                 out_io.write(f"\n         {self.swapType1[i]}  {self.swapType2[i]}")
                     
             out_io.write(f"\n atom swap frequency                      {self.swapFrequency} \n")
@@ -131,7 +140,7 @@ class JobControl:
             
         if self.num_swap_atoms > 0:
             out_io.write(f"\n atom types to be swapped \n")
-            for i in range(len(self.moveTypes)):
+            for i in range(len(self.swapType1)):
                 out_io.write(f"\n         {self.swapType1[i]}  {self.swapType2[i]}")
                     
             out_io.write(f"\n atom swap frequency                      {self.swapFrequency} \n")
@@ -166,8 +175,16 @@ class JobControl:
                 self.temperature = float(words[1])
             elif keyWord == "maxdistance":
                 self.maxDistance = np.float64(words[1])
+            elif keyWord == "distanceupdate":    
+                self.accAtomMoveUpdate = int(words[1])
+            elif keyWord == "distanceratio":   
+                self.acceptAtomMoveRatio = np.float64(words[1])
             elif keyWord == "maxvolume":
                 self.maxVolDisplacement = np.float64(words[1])
+            elif keyWord == "volupdate":
+                self.acceptVolUpdate = int(words[1])
+            elif keyWord == "volratio":
+                self.acceptVolMoveRatio = np.float64(words[1])
             elif keyWord == "freeze":
                 num = int(words[1])
                 for _ in range(num):
