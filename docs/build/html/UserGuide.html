@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>1. Introduction &#8212; PYMC-NMR  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4f649999" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=cb25574f" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Welcome to PYMC-NMR’s documentation!" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="introduction">
+<h1>1. Introduction<a class="headerlink" href="#introduction" title="Link to this heading">¶</a></h1>
+<p>Pymc-nmr has three modes of operation that are based on swap moves. A swap move is where the positions of two atoms, chosen at random, are interchanged.
+For example, the two atoms outlined in red in the figure below.</p>
+<a class="reference internal image-reference" href="_images/swap-move.png"><img alt="_images/swap-move.png" src="_images/swap-move.png" style="width: 400px;" /></a>
+<p>The difference in energy of the old (<em>o</em>) and new (<em>n</em>) cells is calculated and employed within the Metropolis-Hastings sampling. Thus the move is accepted with
+the probability</p>
+<p><span class="math notranslate nohighlight">\(acc(o \rightarrow n) = min(1, exp(- \beta [E_{n} - E_{o}]))\)</span></p>
+<section id="monte-carlo">
+<h2>1.1 Monte Carlo<a class="headerlink" href="#monte-carlo" title="Link to this heading">¶</a></h2>
+<p>This is the standard Monte Carlo method described in the books by (<a class="reference internal" href="#ref-allen-tildesley-87"><span class="std std-ref">Allen and Tildesley 1989</span></a>; <a class="reference internal" href="#ref-frenkel-smit"><span class="std std-ref">Frenkel and Smit 2002</span></a>).
+DL_MONTE. Simulations can be performed in the canonical (<span class="math notranslate nohighlight">\(NVT\)</span>) ensemble and isobaric-isothermal (<span class="math notranslate nohighlight">\(NPT\)</span>) (where MC moves attempting variations in
+the volume of the system are applied). In addition, the swap moves described above can be employed.</p>
+<p>Note as a <em>single</em> particle is moved
+at a time it tends to be very slow and is only useful where the difference in energy is small. However, using the small MACE model the length of the simulations are more acceptable
+and the method is capable of getting you out of a jam if the forces in your structure are very high.</p>
+</section>
+<section id="basin-hopping">
+<h2>1.2 Basin Hopping<a class="headerlink" href="#basin-hopping" title="Link to this heading">¶</a></h2>
+<p>The basin hopping approach is useful when the difference in energy between swapped particles is large. Each swap of particles is followed by an energy minimisation. The
+difference in energy is taken after the minimisation and the Metropolis selection rule applied. Although the calculation of the energy consumes more resources
+the probability of the swap being accepted is significantly greater.
+In some cases the position of a particle is not known and we have created the possibility of using a NVT molecular dynamics calculation followed by energy minimisation
+to further reduce the total energy of the cell.</p>
+</section>
+<section id="randomised-configuration">
+<h2>1.2 Randomised Configuration<a class="headerlink" href="#randomised-configuration" title="Link to this heading">¶</a></h2>
+<p>The last method is an ab initio random structure search method. In this approach all the particles of two specific type are swapped and an energy minimisation performed.
+In out limited experience, this the basin hooping method is more efficient than this technique.</p>
+</section>
+</section>
+<section id="installation">
+<h1>2. Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h1>
+<p>External libraries required are NUMPY, MACE and ASE (and their dependecies). In addition libraries to satisfy the ASE calculator
+or MLIP potentials may be necessary.</p>
+</section>
+<section id="how-to-run-the-program">
+<h1>3. How to run the program<a class="headerlink" href="#how-to-run-the-program" title="Link to this heading">¶</a></h1>
+<p>The program requires three input files, <em>control</em>, <em>potentials</em> and <em>basin.xyz</em> that contain the
+keywords for the functionality of the program, potential model and the atomic
+positions respectively (in extended xyz).</p>
+<section id="control">
+<h2>3.1 control<a class="headerlink" href="#control" title="Link to this heading">¶</a></h2>
+<p>The input is broken into sections depending on the functionality. The
+main input key words are</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><strong>Key word</strong></p></th>
+<th class="head"><p><strong>Type</strong></p></th>
+<th class="head"><p><strong>Functionality</strong></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>#</p></td>
+<td></td>
+<td><p>comments the line (must be first char on the line)</p></td>
+</tr>
+<tr class="row-odd"><td><p>print</p></td>
+<td><p>int</p></td>
+<td><p>The frequency of printing energies to mc.log
+defaults to 1 i.e. every iteration</p></td>
+</tr>
+<tr class="row-even"><td><p>check</p></td>
+<td><p>int</p></td>
+<td><p>The frequency at which a sanity check is undertaken
+defaults to 1000</p></td>
+</tr>
+<tr class="row-odd"><td><p>restart</p></td>
+<td></td>
+<td><p>Restart the calculation with old configuration
+make sure to cp restart.xyz to basin.xyz</p></td>
+</tr>
+<tr class="row-even"><td><p>temperature</p></td>
+<td><p>float</p></td>
+<td><p>The temperature (K) of simulation used in Boltzman
+sampling</p></td>
+</tr>
+<tr class="row-odd"><td><p>method</p></td>
+<td><p>string</p></td>
+<td><p>The type of simulation required. Use either
+basinhop (default), airss or monte. The latter
+is depricated at the moment as it does not appear
+to work for swapping Si/Al</p></td>
+</tr>
+<tr class="row-even"><td><p>close</p></td>
+<td></td>
+<td><p>Finish all input</p></td>
+</tr>
+<tr class="row-odd"><td><p>archive</p></td>
+<td></td>
+<td><p>Turns on the creation of a archive/history file</p></td>
+</tr>
+<tr class="row-even"><td><p>archivefreq</p></td>
+<td><p>int</p></td>
+<td><p>The frequency at which the configuration is saved
+defaults to 1000</p></td>
+</tr>
+<tr class="row-odd"><td><p>equilsteps</p></td>
+<td><p>int</p></td>
+<td><p>The number of equilibration steps</p></td>
+</tr>
+<tr class="row-even"><td><p>savedownhill</p></td>
+<td></td>
+<td><p>During basin hopping method any configuration that
+has an energy lower than the previous configuration
+will be saved (NB there may have been an up hill move
+between downhill events).</p></td>
+</tr>
+<tr class="row-odd"><td><p>move</p></td>
+<td><p>string</p></td>
+<td><p>The move keyword is used to provide an action on the
+configuration by the means of a second key word.
+Each keyword is described below</p></td>
+</tr>
+</tbody>
+</table>
+<p>Description of keywords to control the molecular dynamics functionality.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><strong>Key word</strong></p></th>
+<th class="head"><p><strong>Type</strong></p></th>
+<th class="head"><p><strong>Functionality</strong></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>mdtimestep</p></td>
+<td><p>float</p></td>
+<td><p>The time step in femtoseconds (default 2.0)</p></td>
+</tr>
+<tr class="row-odd"><td><p>mdtemperature</p></td>
+<td><p>float</p></td>
+<td><p>The temperature for the MD in K (default 1000 K)</p></td>
+</tr>
+<tr class="row-even"><td><p>mdfirction</p></td>
+<td><p>float</p></td>
+<td><p>NVT friction (default 0.01 / fs)</p></td>
+</tr>
+<tr class="row-odd"><td><p>mdsteps</p></td>
+<td><p>int</p></td>
+<td><p>The number of MD steps (default 1000)</p></td>
+</tr>
+</tbody>
+</table>
+<p>Description of keywords to control the relaxation in basin hopping or AIRSS style calculations.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><strong>Key word</strong></p></th>
+<th class="head"><p><strong>Type</strong></p></th>
+<th class="head"><p><strong>Functionality</strong></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>relmethod</p></td>
+<td><p>string</p></td>
+<td><p>the type of relaxation method. Options are lbfgs
+(default), bfgs, or fire</p></td>
+</tr>
+<tr class="row-odd"><td><p>reltol</p></td>
+<td><p>float</p></td>
+<td><p>tolerence for convergence</p></td>
+</tr>
+<tr class="row-even"><td><p>relsteps</p></td>
+<td><p>int</p></td>
+<td><p>The number of relaxation steps (default 1000)</p></td>
+</tr>
+</tbody>
+</table>
+<p>The keywords that are specific to MC simulations only:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><strong>Key word</strong></p></th>
+<th class="head"><p><strong>Type</strong></p></th>
+<th class="head"><p><strong>Functionality</strong></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>maxdistance</p></td>
+<td><p>float</p></td>
+<td><p>the maximum atomic displacement. The default is
+0.001</p></td>
+</tr>
+<tr class="row-odd"><td><p>distanceupdate</p></td>
+<td><p>int</p></td>
+<td><p>The number of MC steps between the updates of the
+max displacement to acieve the target ratio below</p></td>
+</tr>
+<tr class="row-even"><td><p>distanceratio</p></td>
+<td><p>float</p></td>
+<td><p>The target ratio for the acceptance / rejection of
+particle displacements</p></td>
+</tr>
+<tr class="row-odd"><td><p>maxvolume</p></td>
+<td><p>float</p></td>
+<td><p>the maximumvolume displacement. The default is
+0.001</p></td>
+</tr>
+<tr class="row-even"><td><p>volupdate</p></td>
+<td><p>int</p></td>
+<td><p>The number of MC steps between the updates of the
+max volume displacement to acieve the target ratio
+below</p></td>
+</tr>
+<tr class="row-odd"><td><p>volratio</p></td>
+<td><p>float</p></td>
+<td><p>The target ratio for the acceptance / rejection of
+volume expansion / contraction</p></td>
+</tr>
+</tbody>
+</table>
+<p>These keywords follow the <em>move</em> command in the control file.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><strong>Key word</strong></p></th>
+<th class="head"><p><strong>Functionality</strong></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>atoms</p></td>
+<td><p>The <em>atoms</em> keyword must be followed the number of atom types to
+be moved and the probability of the move occuring. It is only
+active in Monte Carlo simulations. An example is</p></td>
+</tr>
+<tr class="row-odd"><td><p>swap</p></td>
+<td><p>Swaps interchange the positions of two types. The number of atom
+pairs and the probability of the move occuring. It is only
+active in all types of calculation.</p></td>
+</tr>
+<tr class="row-even"><td><p>moldyn</p></td>
+<td><p>This activates an NVT molecular dynamics calculation (only within
+basin hopping). An integer gives the probability of this ooccuring.</p></td>
+</tr>
+<tr class="row-odd"><td><p>volume</p></td>
+<td><p>A volume move within the monte Carlo method only An integer gives
+the probability of this ooccuring.</p></td>
+</tr>
+</tbody>
+</table>
+<p>An example ov <em>move atom</em></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">move</span> <span class="n">atoms</span> <span class="mi">2</span> <span class="mi">100</span>
+<span class="n">Si</span>
+<span class="n">O</span>
+</pre></div>
+</div>
+<p>An example of <em>swap</em></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">move</span> <span class="n">swap</span> <span class="mi">2</span> <span class="mi">100</span>
+<span class="n">Si</span>  <span class="n">Al</span>
+<span class="n">K</span>   <span class="n">ghost</span>   <span class="p">(</span><span class="n">the</span> <span class="n">fictitious</span> <span class="n">particle</span> <span class="n">must</span> <span class="n">be</span> <span class="n">called</span> <span class="n">ghost</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>How to use molecular dynamics in basin hopping</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">move</span> <span class="n">moldyn</span> <span class="mi">20</span>
+</pre></div>
+</div>
+<p>Using the volume move in Monte Carlo</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">move</span> <span class="n">volume</span> <span class="mi">20</span>
+</pre></div>
+</div>
+<p>Example number 1: Monte Carlo control file</p>
+<hr class="docutils" />
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Commented out lines start with &#39;#</span>
+<span class="nb">print</span> <span class="mi">1</span>                           <span class="c1"># the frequency for printing energies etc</span>
+<span class="n">maxdistance</span> <span class="mf">0.35</span>                  <span class="c1"># the maximum displacement of particles</span>
+<span class="n">maxvolume</span> <span class="mf">0.035</span>                   <span class="c1"># the maximum</span>
+<span class="n">steps</span> <span class="mi">30000</span>                       <span class="c1"># the number of steps</span>
+<span class="n">equilsteps</span> <span class="mi">15000</span>                  <span class="c1"># the number of steps before average properties are calculated</span>
+<span class="n">archive</span>                           <span class="c1"># flag to create an archive/history file (archive.xyz) of the configurations</span>
+<span class="n">archivefrequency</span> <span class="mi">1000</span>             <span class="c1"># frequency for writing configurations to the archive</span>
+<span class="n">method</span> <span class="n">monte</span>                      <span class="c1"># use standard MC method</span>
+<span class="n">check</span> <span class="mi">5</span>                           <span class="c1"># check that the running total energy and a freshly calculated value agree also restart.xyz is written at this point</span>
+
+<span class="n">temperature</span> <span class="mi">1300</span>                  <span class="c1"># temperature / Kelvin</span>
+<span class="c1"># displacement MC moves for atoms</span>
+<span class="n">move</span> <span class="n">atoms</span> <span class="mi">4</span> <span class="mi">50</span>
+<span class="n">Na</span>
+<span class="n">O</span>
+<span class="n">Si</span>
+<span class="n">Al</span>
+<span class="c1">#particle swap moves for zeolite containing Si and Al</span>
+<span class="n">move</span> <span class="n">swap</span> <span class="mi">1</span> <span class="mi">30</span>
+<span class="n">Al</span> <span class="n">Si</span>
+<span class="c1"># volume moves in NpT</span>
+<span class="n">move</span> <span class="n">volume</span> <span class="mi">20</span>
+<span class="n">close</span>                             <span class="c1"># stop input</span>
+</pre></div>
+</div>
+<hr class="docutils" />
+<p>Example number 2: Basin hopping control file</p>
+<hr class="docutils" />
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span> <span class="mi">1</span>                           <span class="c1"># the frequency for printing energies etc</span>
+<span class="n">steps</span> <span class="mi">10</span>                          <span class="c1"># the number of steps</span>
+<span class="n">equilsteps</span> <span class="mi">5</span>                      <span class="c1"># the number of equilibration steps</span>
+<span class="n">archive</span>                           <span class="c1"># flag to create an archive/history file (archive.xyz) of the configurations</span>
+<span class="n">archivefrequency</span> <span class="mi">10</span>               <span class="c1"># frequency for writing configurations to the archive</span>
+<span class="n">savedownhill</span>                      <span class="c1"># downhill (energy less than previous configuration) moves are saved to downhill.xyz</span>
+<span class="n">temperature</span> <span class="mi">1200</span>                  <span class="c1"># tempretaure (Kelvin) of Boltzmann sampling</span>
+<span class="n">method</span> <span class="n">basinhop</span>                   <span class="c1"># Basin hopping method selected</span>
+<span class="n">relmethod</span> <span class="n">bfgs</span>                    <span class="c1"># relaxation/minimisation method</span>
+<span class="n">relsteps</span> <span class="mi">1500</span>                     <span class="c1"># maximum number of steps allowed to complete the relaxation</span>
+<span class="n">reltol</span> <span class="mf">1.0e-2</span>                     <span class="c1"># tolerance for the relaxation</span>
+<span class="n">mdsteps</span> <span class="mi">500</span>                       <span class="c1"># the number of steps in the MD</span>
+<span class="n">mdtemperature</span> <span class="mi">200</span>                 <span class="c1"># the temperature of the MD mini-simulation</span>
+<span class="n">move</span> <span class="n">swap</span> <span class="mi">1</span> <span class="mi">80</span>                    <span class="c1"># the atoms to be swapped</span>
+<span class="n">Al</span> <span class="n">Si</span>
+<span class="n">move</span> <span class="n">moldyn</span> <span class="mi">20</span>                    <span class="c1"># also usee MD to shake the system down</span>
+<span class="n">close</span>                             <span class="c1"># stop input</span>
+</pre></div>
+</div>
+</section>
+<section id="basis">
+<h2>3.2 basis<a class="headerlink" href="#basis" title="Link to this heading">¶</a></h2>
+<p>The basis format follows that of a simplified extended xyz. The minimum format is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">number_of_atoms</span>
+<span class="n">Lattice</span><span class="o">=</span><span class="s2">&quot;vectors * 9&quot;</span>
+<span class="n">name</span>      <span class="n">x</span>  <span class="n">y</span>  <span class="n">z</span>
+<span class="n">name</span>      <span class="n">x</span>  <span class="n">y</span>  <span class="n">z</span>
+</pre></div>
+</div>
+<p><em>NB</em> any fictitious or ghost atoms must be placed last in the basin.xyz file.</p>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="mi">2549</span>
+<span class="n">Lattice</span><span class="o">=</span><span class="s2">&quot;32.7232154959 0.0 0.0 0.0 32.7232154959 0.0 0.0 0.0 32.7232154959&quot;</span>
+<span class="n">O</span> <span class="mf">1.4168603868</span>  <span class="mf">1.3899782202</span>  <span class="mf">1.3108695097</span>
+<span class="n">O</span> <span class="mf">4.1014301991</span>  <span class="mf">4.0478192159</span>  <span class="mf">1.4171530724</span>
+<span class="n">O</span> <span class="mf">3.7163970637</span>  <span class="o">-</span><span class="mf">1.3764087458</span>  <span class="mf">4.0580241564</span>
+</pre></div>
+</div>
+</section>
+<section id="potentials">
+<h2>3.3 potentials<a class="headerlink" href="#potentials" title="Link to this heading">¶</a></h2>
+<p>Description of keywords used within the potentials file. This is consumed by the field.py
+class and controls the calculation style.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><strong>Key word</strong></p></th>
+<th class="head"><p><strong>Type</strong></p></th>
+<th class="head"><p><strong>Functionality</strong></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>species</p></td>
+<td><p>int</p></td>
+<td><p>the number of different types. Each species are on
+following lines e.g.
+species 1
+O 16.0 0.0 8.0 (the floats are required but not used
+at present)</p></td>
+</tr>
+<tr class="row-odd"><td><p>close</p></td>
+<td></td>
+<td><p>Finish all input</p></td>
+</tr>
+<tr class="row-even"><td><p>#</p></td>
+<td></td>
+<td><p>comments the line (must be first char on the line)</p></td>
+</tr>
+<tr class="row-odd"><td><p>device</p></td>
+<td><p>string</p></td>
+<td><p>where the energy evaluation should be evaluated
+it is not checked by the program but sent directly
+the ASE/janus calculator. (default: “cuda”)</p></td>
+</tr>
+<tr class="row-even"><td><p>precision</p></td>
+<td><p>string</p></td>
+<td><p>The precision of the calculation.
+It is not checked by the program but sent directly
+the ASE/janus calculator. (default: “float64”)</p></td>
+</tr>
+<tr class="row-odd"><td><p>arch</p></td>
+<td><p>string</p></td>
+<td><p>The style of calculation used in the calculator.
+In theory any ASE calculator could be used but it
+could require the Field.py to be modified. Therefore
+it is not checked by the program but sent directly
+the ASE/janus calculator. (default: “mace_mp”)</p></td>
+</tr>
+<tr class="row-even"><td><p>model</p></td>
+<td><p>string</p></td>
+<td><p>The full path to the MLIP model is required</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="references">
+<h1>6. References<a class="headerlink" href="#references" title="Link to this heading">¶</a></h1>
+<div class="references csl-bib-body hanging-indent name refs docutils container">
+<div class="csl-entry docutils container" id="ref-allen-tildesley-87">
+<p>Allen MP, and Tildesley DJ. 1989. <em>Computer Simulation of Liquids</em>. Oxford University Press, USA.</p>
+</div>
+<div class="csl-entry docutils container" id="ref-frenkel-smit">
+<p>Daan Frenkel, and Berend Smit. 2002. <em>Understanding Molecular Simulation: From Algorithms to Applications</em>. Second. San Diego: Academic Press.</p>
+</div>
+</div>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">PYMC-NMR</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">1. Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#monte-carlo">1.1 Monte Carlo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#basin-hopping">1.2 Basin Hopping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#randomised-configuration">1.2 Randomised Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#installation">2. Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#how-to-run-the-program">3. How to run the program</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#control">3.1 control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#basis">3.2 basis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#potentials">3.3 potentials</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#references">6. References</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Welcome to PYMC-NMR’s documentation!</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2024, John Purton.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/UserGuide.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

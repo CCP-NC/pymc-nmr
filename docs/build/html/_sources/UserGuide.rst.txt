@@ -22,7 +22,7 @@ DL_MONTE. Simulations can be performed in the canonical (:math:`NVT`) ensemble a
 the volume of the system are applied). In addition, the swap moves described above can be employed.
 
 Note as a *single* particle is moved
-at a time it tends to be slow and is only useful where the difference in energy is small. However, using the small MACE_mp model the length of the simulations are more acceptable
+at a time it tends to be very slow and is only useful where the difference in energy is small. However, using the small MACE model the length of the simulations are more acceptable
 and the method is capable of getting you out of a jam if the forces in your structure are very high.
 
 -----------------
@@ -46,7 +46,7 @@ In out limited experience, this the basin hooping method is more efficient than 
 2. Installation
 ===============
 
-External libraries required are NUMPY, MACE, ASE and janus-core(and their dependecies). In addition libraries to satisfy the ASE calculator 
+External libraries required are NUMPY, MACE and ASE (and their dependecies). In addition libraries to satisfy the ASE calculator 
 or MLIP potentials may be necessary.
 
 
@@ -315,13 +315,6 @@ class and controls the calculation style.
 | model          | string      | The full path to the MLIP model is required          |
 +----------------+-------------+------------------------------------------------------+
 
-===============
-4. Output Files
-===============
-
-All styles of calculations create a file called *mc.log* that provides the details of the simulation. Initially the input is written to this file followed by the
-details of the simulation. Subsequently the total energy and the cell properties (*a, b, c, alpha, beta and gamma*) are printed. Finally the number of successful
-swaps (and other moves if selected) are given and lastly the average energy and cell properties along side the fluctuations.
 
 =============
 6. References

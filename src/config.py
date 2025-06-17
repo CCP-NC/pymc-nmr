@@ -379,7 +379,7 @@ class Config (object):
         #bulks = np.ones(3, dtype=np.float64)
         cell = self.vectors
         
-        scale = 1.0 + (r - 0.5) * max_vol_change
+        scale = 1.0 + (r - 0.5) * max_vol_change[indx]
 
         if indx == 0:
             cell[0][0] *= scale
@@ -403,7 +403,7 @@ class Config (object):
         r = np.random.random()
         cell = self.vectors
 
-        scale = 1.0 + (r - 0.5) * max_vol_change
+        scale = 1.0 + (r - 0.5) * max_vol_change[indx]
 
         if indx == 0:
             cell[0][0] *= scale

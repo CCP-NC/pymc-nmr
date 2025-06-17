@@ -82,7 +82,7 @@ class JobControl:
                 out_io.write(f"\n volume move symmetry                     cubic \n")
             elif self.volMoveSymmetry == 1:
                 out_io.write(f"\n volume move symmetry                     tetragonal \n")
-            elif self.volMoveSymmetry == 1:
+            elif self.volMoveSymmetry == 2:
                 out_io.write(f"\n volume move symmetry                     orthorhombic \n")
             else:
                 out_io.write(f"\n volume move symmetry not recognised \n")
