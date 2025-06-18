@@ -51,6 +51,7 @@ class JobControl:
         self.relmethod = "lbfgs"
         self.relsteps = 1000
         self.reltol = 1e-3
+        self.relstyle = "conp"
         
     def write_mc_control(self, out_io):
         
@@ -131,6 +132,15 @@ class JobControl:
         out_io.write(f"\n  relaxation steps                        {self.relsteps} \n")
         out_io.write(f"\n  relaxation tolerance                    {self.reltol} \n")
 
+        if self.relstyle == "conp":
+            out_io.write(f"\n cell lengths and angles will be allowed to change during relaxation \n")
+        elif self.relstyle == "cona":
+            out_io.write(f"\n cell angles will be fixed during relaxation \n")
+        elif self.relstyle == "conv":
+            out_io.write(f"\n cell lengths and angles will be fixed during relaxation \n")
+        else:
+            out_io.write(f"\n wrong relaxation style entered. Valid options are : conp, cona, conv \n")
+
     def write_airss_control(self, out_io):
         
         out_io.write(f"\n the number of steps                      {self.mcSteps} \n")
@@ -147,7 +157,16 @@ class JobControl:
 
         out_io.write(f"\n  relaxation method                       {self.relmethod} \n")
         out_io.write(f"\n  relaxation steps                        {self.relsteps} \n")
-        out_io.write(f"\n  relaxation tolerance                    {self.reltol} \n")   
+        out_io.write(f"\n  relaxation tolerance                    {self.reltol} \n")
+
+        if self.relstyle == "conp":
+            out_io.write(f"\n cell lengths and angles will be allowed to change during relaxation \n")
+        elif self.relstyle == "cona":
+            out_io.write(f"\n cell angles will be fixed during relaxation \n")
+        elif self.relstyle == "conv":
+            out_io.write(f"\n cell lengths and angles will be fixed during relaxation \n")   
+        else:
+            out_io.write(f"\n wrong relaxation style entered. Valid options are : conp, cona, conv \n")
 
     def read_job_control(self, in_stream, out_stream):
         while True:
@@ -250,4 +269,10 @@ class JobControl:
                 self.relsteps = int(words[1])
             elif keyWord == "reltol":
                 self.reltol = float(words[1]) 
+            elif keyWord == "conp":
+                self.relstyle = "conp"
+            elif keyWord == "cona":
+                self.relstyle = "cona"
+            elif keyWord == "conv":
+                self.relstyle = "conv"
 

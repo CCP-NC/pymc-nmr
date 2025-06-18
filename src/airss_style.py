@@ -86,7 +86,7 @@ class AirssStyle:
                 basin.randomise(job.swapType1[i], job.swapType2[i], old_pos)
 
         new_basin = basin.create_atoms_object()
-        totalEnergy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol)
+        totalEnergy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle)
         basin.update_from_atoms(new_basin)
            
         totalEnergy.print_energy(1, out_stream)
@@ -187,7 +187,7 @@ class AirssStyle:
         new_energy = Energy()
         new_basin = basin.create_atoms_object()
         #write(filename="shuffled.xyz", images=new_basin, format="extxyz", append=False)
-        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol)
+        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle)
         
         deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
     

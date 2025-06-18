@@ -168,7 +168,7 @@ class BasinHop:
         fld.setup()
 
         new_basin = basin.create_atoms_object()
-        totalEnergy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol)
+        totalEnergy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle)
         basin.update_from_atoms(new_basin)
            
         totalEnergy.print_energy(1, out_stream)
@@ -308,7 +308,7 @@ class BasinHop:
 
         new_energy = Energy()
         new_basin = basin.create_atoms_object()
-        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol)
+        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle)
         
         deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
         deltaVB = beta * deltaV
@@ -345,7 +345,7 @@ class BasinHop:
 
         new_energy = Energy()
         #the energy needs to be relaxed to get the "new" energy
-        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol)
+        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle)
         
         if new_energy.totalEnergy > 1.0e5:   # ie it has failed to minimisa - this prevents it going into a stupid position
 

@@ -99,18 +99,25 @@ class Field:
         
         return total_energy
 
-    def calculate_energy_relax(self, atoms: Atoms, relmethod, relsteps, reltol):
+    def calculate_energy_relax(self, atoms: Atoms, relmethod, relsteps, reltol, relstyle):
         
         total_energy = Energy()
+
+        if relstyle == "conv":
+            mask=[0,0,0,0,0,0]
+        elif relstyle == "cona":
+            mask=[1,1,1,0,0,0]
+        else:
+            mask=[1,1,1,1,1,1]
        
         atoms.calc = self.janCalc
         
         if relmethod == "lbfgs":
-            flag = LBFGS(UnitCellFilter(atoms, mask=[1,1,1,1,1,1])).run(fmax=reltol, steps=relsteps)
+            flag = LBFGS(UnitCellFilter(atoms, mask=mask)).run(fmax=reltol, steps=relsteps)
         elif relmethod == "fire":
-            flag = FIRE(UnitCellFilter(atoms, mask=[1,1,1,1,1,1])).run(fmax=reltol, steps=relsteps)
+            flag = FIRE(UnitCellFilter(atoms, mask=mask)).run(fmax=reltol, steps=relsteps)
         elif relmethod == "bfgs":
-            flag = BFGS(UnitCellFilter(atoms, mask=[1,1,1,1,1,1])).run(fmax=reltol, steps=relsteps)
+            flag = BFGS(UnitCellFilter(atoms, mask=mask)).run(fmax=reltol, steps=relsteps)
         else:
             print("unrecognised relaxation method")
             exit()

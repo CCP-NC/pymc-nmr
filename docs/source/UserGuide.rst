@@ -133,6 +133,14 @@ Description of keywords to control the relaxation in basin hopping or AIRSS styl
 +----------------+-------------+------------------------------------------------------+
 | relsteps       | int         | The number of relaxation steps (default 1000)        |
 +----------------+-------------+------------------------------------------------------+
+| conp           | string      | cell anngles and lengths can change during the       |
+|                |             | relaxation (default)                                 |
++----------------+-------------+------------------------------------------------------+
+| cona           | string      | only the cell lengths can change during the          |
+|                |             | relaxation. The angles are fixed.                    |
++----------------+-------------+------------------------------------------------------+
+| conv           | string      | the cell lengths and angles are fixed.               |
++----------------+-------------+------------------------------------------------------+
 
 The keywords that are specific to MC simulations only:
 
