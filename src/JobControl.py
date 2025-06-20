@@ -40,6 +40,9 @@ class JobControl:
         self.restart = False
         self.max_force = 1.0e-3
 
+        self.writestats = False
+        self.writestats_freq = 10
+
         #md parameters
         self.mdMoveFreq = 0
         self.mdtimestep = 2.0 * fs
@@ -101,7 +104,10 @@ class JobControl:
                 out_io.write(f"\n         {self.swapType1[i]}  {self.swapType2[i]}")
                     
             out_io.write(f"\n atom swap frequency                      {self.swapFrequency} \n")
-
+ 
+        if self.writestats:
+            out_io.write(f"\n energy data will be written to a file every {self.writestats_freq} steps \n")
+            
     def write_bh_control(self, out_io):
         
         out_io.write(f"\n the number of steps                      {self.mcSteps} \n")
@@ -141,6 +147,9 @@ class JobControl:
         else:
             out_io.write(f"\n wrong relaxation style entered. Valid options are : conp, cona, conv \n")
 
+        if self.writestats:
+            out_io.write(f"\n energy data will be written to a file every {self.writestats_freq} steps \n")
+
     def write_airss_control(self, out_io):
         
         out_io.write(f"\n the number of steps                      {self.mcSteps} \n")
@@ -167,6 +176,9 @@ class JobControl:
             out_io.write(f"\n cell lengths and angles will be fixed during relaxation \n")   
         else:
             out_io.write(f"\n wrong relaxation style entered. Valid options are : conp, cona, conv \n")
+        
+        if self.writestats:
+            out_io.write(f"\n energy data will be written to a file every {self.writestats_freq} steps \n")
 
     def read_job_control(self, in_stream, out_stream):
         while True:
@@ -275,4 +287,8 @@ class JobControl:
                 self.relstyle = "cona"
             elif keyWord == "conv":
                 self.relstyle = "conv"
+            elif keyWord == "writestats":
+                self.writestats = True
+            elif keyWord == "statsfreq":
+                self.writestats_freq = int(words[1])
 

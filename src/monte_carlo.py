@@ -217,7 +217,7 @@ class MonteCarlo:
         
 
 
-    def run(self, spec: Species, fld: Field, job: JobControl, stats: Statistics, type_stats: TypeStatistics, basin: Config, numSteps, cycle, initialise, out_stream):
+    def run(self, spec: Species, fld: Field, job: JobControl, stats: Statistics, type_stats: TypeStatistics, basin: Config, numSteps, cycle, restart_iteration, out_stream):
 
        
         volRatio = np.zeros(6, dtype=np.float64)
@@ -241,12 +241,19 @@ class MonteCarlo:
         #totalEnergy.totalEnergy = energy_new.totalEnergy
         totalEnergy.print_energy(1, out_stream)
 
+        numSteps = 1
+        if job.restart:
+            numSteps = restart_iteration
+
         if job.restart == False:
             archive_io = open("archive.xyz", "w")
             basin.write_config(archive_io, total_energy=totalEnergy.get_total_energy(), iteration=0)
             archive_io.close()
 
-        numSteps = 1
+            if job.writestats:
+                stats_io = open("stats", "w")
+                self.write_statistics(numSteps, totalEnergy.get_total_energy(), basin.cell_properties(), stats_io)
+                stats_io.close()
 
         while numSteps <= job.mcSteps:
 
@@ -274,6 +281,11 @@ class MonteCarlo:
                 archive_io = open("archive.xyz", "a")
                 basin.write_config(archive_io, total_energy=totalEnergy.get_total_energy(), iteration=numSteps)
                 archive_io.close()
+
+            if job.writestats and numSteps % job.writestats_freq == 0:
+                stats_io = open("stats", "a")
+                self.write_statistics(numSteps, totalEnergy.get_total_energy(), basin.cell_properties(), stats_io)
+                stats_io.close()
 
             
             if numSteps % job.accAtomMoveUpdate == 0 and numSteps > 0:
@@ -445,7 +457,7 @@ class MonteCarlo:
         old_vec = basin.get_vectors()
         old_pos = basin.get_positions()
 
-        bulks = np.ones(3, dtype=np.float64)
+        bulks = np.ones(6, dtype=np.float64)
         
         if job.volMoveSymmetry == 0:
             indx = 0
@@ -457,6 +469,9 @@ class MonteCarlo:
         elif job.volMoveSymmetry == 2:
             indx = int(3.0 * np.random.random())
             vol_new = basin.expand_cell_orthorhombic(indx, bulks, self.maxVolChange)
+        elif job.volMoveSymmetry == 3:
+            indx = int(6.0 * np.random.random())
+            vol_new = basin.distort_cell(indx, bulks, self.maxVolChange)
         else:
             pass  # Implement other volume changes if needed
         

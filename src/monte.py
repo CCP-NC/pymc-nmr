@@ -103,7 +103,7 @@ def main():
             out_stream.write(" Monte Carlo Simulation. Cycle : " + str(cycle) + "\n")
             out_stream.write(" *" * 53 + "\n")
 
-            mc.run(spec, fld, job, stats, type_stats, basin, num_steps, cycle, initialise, out_stream)
+            mc.run(spec, fld, job, stats, type_stats, basin, num_steps, cycle, restart_iteration, out_stream)
         
         elif job.structure_method == "airss":
             out_stream.write("\n\n" + " *" * 53 + "\n")

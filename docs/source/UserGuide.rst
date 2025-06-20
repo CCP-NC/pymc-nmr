@@ -46,8 +46,11 @@ In out limited experience, this the basin hooping method is more efficient than 
 2. Installation
 ===============
 
-External libraries required are NUMPY, MACE, ASE and janus-core(and their dependecies). In addition libraries to satisfy the ASE calculator 
+External libraries required are `NUMPY`_, MACE, `ASE`_ and janus-core (and their dependecies). In addition libraries to satisfy the ASE calculator 
 or MLIP potentials may be necessary.
+
+.. _NUMPY: https://numpy.org/
+.. _ASE: https://wiki.fysik.dtu.dk/ase/
 
 
 =========================
@@ -96,6 +99,10 @@ main input key words are
 |              |             | defaults to 1000                                     |
 +--------------+-------------+------------------------------------------------------+
 | equilsteps   | int         | The number of equilibration steps                    |
++--------------+-------------+------------------------------------------------------+
+| writestats   |             | Activates writing of energy/cell data to stats file  |
++--------------+-------------+------------------------------------------------------+
+| statsfreq    | int         | frequency of writing data to stats file              |
 +--------------+-------------+------------------------------------------------------+
 | savedownhill |             | During basin hopping method any configuration that   |
 |              |             | has an energy lower than the previous configuration  |
@@ -323,6 +330,20 @@ class and controls the calculation style.
 | model          | string      | The full path to the MLIP model is required          |
 +----------------+-------------+------------------------------------------------------+
 
+An example of a potentials file for STA30 containing both H and K ::
+
+   species 5                                                 #the number of different types of atoms
+   H 0.0 0.0 1                                               #Chemical symbol followed by 2 floats and an int
+   K 0.0 0.0 1                                               #they are redundant at the moment
+   Al 0.0 0.0 13
+   Si 0.0 0.0 14
+   O 0.0 0.0 8
+   model ../../../models/MACE-matpes-r2scan-omat-ft.model    #the path to the MLIP model
+   #arch mace_mp                                             # architecture
+   #device gpu                                               # will run on the gpu
+   #precision float 64                                       # use double precision
+   close
+
 ===============
 4. Output Files
 ===============
@@ -330,6 +351,13 @@ class and controls the calculation style.
 All styles of calculations create a file called *mc.log* that provides the details of the simulation. Initially the input is written to this file followed by the
 details of the simulation. Subsequently the total energy and the cell properties (*a, b, c, alpha, beta and gamma*) are printed. Finally the number of successful
 swaps (and other moves if selected) are given and lastly the average energy and cell properties along side the fluctuations.
+
+The configurations are written to the following files (all use extended xyz)
+- archive.xyz (MC and basin hopping) if activated and periodically dump the structure to the file. It is overwritten unless the *restart* keyword is used.
+- restart.xyz (all modes) the final configuration and should be copied to basin.xyz to continue the calculation
+- accepted.xyz (basin hopping). If a configuration is accepted, even by Metropolis sampling, then the configuration is written (**NB** this file is lways appended
+  to so if you dont want the data from the previous run then you should delete it!)
+- downhill.xyz (basin hopping). if a configuration has a lower energy than the previous configuration then it will be saved. Be aware that the previous accepted structure may not be the lowest energy configuration due to Metropolis-Hastings sampling. The file is also appended to.
 
 =============
 6. References

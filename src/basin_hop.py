@@ -150,6 +150,18 @@ class BasinHop:
         self._setupBasinHop(spec, job, out_stream)
 
         self._createMCMoves(job)
+
+    def write_statistics(self, numSteps, total_energy, cell_properties, stats_io):
+        stats_io.write(f" {numSteps} ")
+        stats_io.write(f" {total_energy } ")
+        stats_io.write(f" {cell_properties[0]} ")
+        stats_io.write(f" {cell_properties[1]} ")
+        stats_io.write(f" {cell_properties[2]} ")
+        stats_io.write(f" {cell_properties[3]} ")
+        stats_io.write(f" {cell_properties[4]} ")
+        stats_io.write(f" {cell_properties[5]} \n")
+        stats_io.flush()
+
     
     def run(self, spec: Species, fld: Field, job: JobControl, stats: Statistics, type_stats: TypeStatistics, basin: Config, numSteps, cycle, 
             initialise, restart_iteration, restart_energy, out_stream):
@@ -173,16 +185,20 @@ class BasinHop:
            
         totalEnergy.print_energy(1, out_stream)
 
-        
-        if job.restart == False:
-            archive_io = open("archive.xyz", "w")
-            basin.write_config(archive_io, total_energy=totalEnergy.get_total_energy(), iteration=0)
-            archive_io.close()
-        
         numSteps = 1
         if job.restart:
             numSteps = restart_iteration
 
+        if job.restart == False:
+            archive_io = open("archive.xyz", "w")
+            basin.write_config(archive_io, total_energy=totalEnergy.get_total_energy(), iteration=0)
+            archive_io.close()
+
+            if job.writestats:
+                stats_io = open("stats", "w")
+                self.write_statistics(numSteps, totalEnergy.get_total_energy(), basin.cell_properties(), stats_io)
+                stats_io.close()
+        
         while numSteps <= job.mcSteps:
 
             choice = int(self.numMCMoves * np.random.random())
@@ -195,11 +211,11 @@ class BasinHop:
             elif selection == 2:
                 self.swapAtoms_relax(basin, fld, totalEnergy, job, beta, out_stream)
 
-            new_basin = basin.create_atoms_object()
-            energy_new = fld.calculate_energy(new_basin)
-            basin.update_from_atoms(new_basin)
+            #new_basin = basin.create_atoms_object()
+            #energy_new = fld.calculate_energy(new_basin)
+            #basin.update_from_atoms(new_basin)
             
-            print("energy in main routine ", energy_new.totalEnergy)
+            #print("energy in main routine ", energy_new.totalEnergy)
 
             stats.sample(job.equilSteps, numSteps, totalEnergy, basin.get_volume(), basin.cell_properties(), out_stream)
             type_stats.sample_types(numSteps, job.equilSteps, basin, spec)
@@ -212,6 +228,11 @@ class BasinHop:
                 archive_io = open("archive.xyz", "a")
                 basin.write_config(archive_io, total_energy=totalEnergy.get_total_energy(), iteration=numSteps)
                 archive_io.close()
+
+            if job.writestats and numSteps % job.writestats_freq == 0:
+                stats_io = open("stats", "a")
+                self.write_statistics(numSteps, totalEnergy.get_total_energy(), basin.cell_properties(), stats_io)
+                stats_io.close()
 
             if numSteps % job.sanityCheckFreq == 0: 
                 restart_io = open("restart.xyz", "w")
@@ -299,11 +320,9 @@ class BasinHop:
         old_energy = Energy()
         old_energy.totalEnergy = totalEnergy.totalEnergy
         
-
-        #print("swapping", atm1, atm2, basin.chem_symbols[atm1], basin.chem_symbols[atm2])
-        print("swapping ", atm1, basin.symbol[atm1], atm2, basin.symbol[atm2])
-        print("pos atm1 ", basin.symbol[atm1], basin.pos[atm1,:])
-        print("pos atm2 ", basin.symbol[atm2], basin.pos[atm2,:])
+        #print("swapping ", atm1, basin.symbol[atm1], atm2, basin.symbol[atm2])
+        #print("pos atm1 ", basin.symbol[atm1], basin.pos[atm1,:])
+        #print("pos atm2 ", basin.symbol[atm2], basin.pos[atm2,:])
         basin.swap_atom_positions(atm1, atm2)
 
         new_energy = Energy()
@@ -312,7 +331,7 @@ class BasinHop:
         
         deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
         deltaVB = beta * deltaV
-        print("swap ", old_energy.get_total_energy(), new_energy.get_total_energy()," ", deltaV," ", beta, " ", deltaVB)
+        #print("swap ", old_energy.get_total_energy(), new_energy.get_total_energy()," ", deltaV," ", beta, " ", deltaVB)
         accept = False
         arg = np.random.random()
         if arg < np.exp(-deltaVB):
@@ -327,7 +346,7 @@ class BasinHop:
                     write(filename="downhill.xyz", images=new_basin, format="extxyz", append=True)
             else:
                 self.successfulUpSwaps[j] += 1
-            print("swap accepted")
+            #print("swap accepted")
             basin.update_from_atoms(new_basin)
         else:
             basin.swap_atom_positions(atm1, atm2)

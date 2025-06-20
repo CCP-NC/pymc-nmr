@@ -96,6 +96,16 @@ class AirssStyle:
         if job.restart:
             numSteps = restart_iteration
 
+        if job.restart == False:
+            archive_io = open("archive.xyz", "w")
+            basin.write_config(archive_io, total_energy=totalEnergy.get_total_energy(), iteration=0)
+            archive_io.close()
+
+            if job.writestats:
+                stats_io = open("stats", "w")
+                self.write_statistics(numSteps, totalEnergy.get_total_energy(), basin.cell_properties(), stats_io)
+                stats_io.close()
+
         while numSteps <= job.mcSteps:
 
             
@@ -118,6 +128,11 @@ class AirssStyle:
             if numSteps % job.printFreq == 0:
                 stats.check_point(numSteps, job.equilSteps, 0.0, out_stream)
                 type_stats.check_point_types(spec, out_stream)
+
+            if job.writestats and numSteps % job.writestats_freq == 0:
+                stats_io = open("stats", "a")
+                self.write_statistics(numSteps, totalEnergy.get_total_energy(), basin.cell_properties(), stats_io)
+                stats_io.close()
 
             if numSteps % job.sanityCheckFreq == 0: 
                 restart_io = open("restart.xyz", "w")
@@ -191,11 +206,10 @@ class AirssStyle:
         
         deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
     
-        print("random ", old_energy.get_total_energy(), new_energy.get_total_energy()," ", deltaV)
+        #print("random ", old_energy.get_total_energy(), new_energy.get_total_energy()," ", deltaV)
     
         
         if deltaV < 0.0:
-            print("airss new basin found")
             totalEnergy.totalEnergy = new_energy.totalEnergy
             self.sucessfull_airss += 1
             if job.save_downhill:
