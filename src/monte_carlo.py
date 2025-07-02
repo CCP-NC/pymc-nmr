@@ -215,7 +215,16 @@ class MonteCarlo:
     
         self._createMCMoves(job)
         
-
+    def write_statistics(self, numSteps, total_energy, cell_properties, stats_io):
+        stats_io.write(f" {numSteps} ")
+        stats_io.write(f" {total_energy } ")
+        stats_io.write(f" {cell_properties[0]} ")
+        stats_io.write(f" {cell_properties[1]} ")
+        stats_io.write(f" {cell_properties[2]} ")
+        stats_io.write(f" {cell_properties[3]} ")
+        stats_io.write(f" {cell_properties[4]} ")
+        stats_io.write(f" {cell_properties[5]} \n")
+        stats_io.flush()
 
     def run(self, spec: Species, fld: Field, job: JobControl, stats: Statistics, type_stats: TypeStatistics, basin: Config, numSteps, cycle, restart_iteration, out_stream):
 
@@ -457,19 +466,23 @@ class MonteCarlo:
         old_vec = basin.get_vectors()
         old_pos = basin.get_positions()
 
-        bulks = np.ones(6, dtype=np.float64)
+        bulks = None
         
         if job.volMoveSymmetry == 0:
+            bulks = np.ones(3, dtype=np.float64)
             indx = 0
             maxVol = self.maxVolChange[0]
             vol_new = basin.expand_cell_cubic(bulks, maxVol)
         elif job.volMoveSymmetry == 1:
+            bulks = np.ones(3, dtype=np.float64)
             indx = int(2.0 * np.random.random())
             vol_new = basin.expand_cell_tetragonal(indx, bulks, self.maxVolChange)
         elif job.volMoveSymmetry == 2:
+            bulks = np.ones(3, dtype=np.float64)
             indx = int(3.0 * np.random.random())
             vol_new = basin.expand_cell_orthorhombic(indx, bulks, self.maxVolChange)
         elif job.volMoveSymmetry == 3:
+            bulks = np.zeros(6, dtype=np.float64)
             indx = int(6.0 * np.random.random())
             vol_new = basin.distort_cell(indx, bulks, self.maxVolChange)
         else:
@@ -485,7 +498,7 @@ class MonteCarlo:
         deltav = new_energy.get_total_energy() - oldEnergy.get_total_energy()
         #print("energies", new_energy.get_total_energy(), oldEnergy.get_total_energy(), deltav)
         arg = beta * (deltav + job.extPressure * (vol_new - vol_old) - (natoms) * betaInv * math.log(vol_new / vol_old))
-        #print ("old ", oldEnergy.get_total_energy(), " new ", new_energy.get_total_energy(), " diff ", deltav, "arg ", math.exp(-arg))
+        print ("old ", oldEnergy.get_total_energy(), " new ", new_energy.get_total_energy(), " diff ", deltav, "arg ", math.exp(-arg))
         rNum = np.random.random()
         
         if rNum < math.exp(-arg):

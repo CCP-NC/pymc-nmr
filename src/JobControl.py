@@ -88,6 +88,8 @@ class JobControl:
                 out_io.write(f"\n volume move symmetry                     tetragonal \n")
             elif self.volMoveSymmetry == 2:
                 out_io.write(f"\n volume move symmetry                     orthorhombic \n")
+            elif self.volMoveSymmetry == 3:
+                out_io.write(f"\n volume move symmetry                     vectors \n")
             else:
                 out_io.write(f"\n volume move symmetry not recognised \n")
                 out_io.flush()
@@ -259,6 +261,11 @@ class JobControl:
                         self.swapType2.append(words[1])
                 elif subWord == "moldyn":
                     self.mdMoveFreq = int(words[2])
+                else:
+                    out_stream.write(f"\n move directive not found: {subWord}")
+                    out_stream.flush()
+                    exit()
+                    
             elif keyWord == "symmetry":
                 subWord = words[1]
                 if subWord == "cubic":
@@ -267,6 +274,8 @@ class JobControl:
                     self.volMoveSymmetry = 1
                 elif subWord == "orthorhombic":
                     self.volMoveSymmetry = 2
+                elif subWord == "vectors":
+                    self.volMoveSymmetry = 3
             elif keyWord == "mdtimestep":
                 self.timestep = float(words[1])
             elif keyWord == "mdtemperature":

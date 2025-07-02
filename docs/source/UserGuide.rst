@@ -46,21 +46,29 @@ In out limited experience, this the basin hooping method is more efficient than 
 2. Installation
 ===============
 
-External libraries required are `NUMPY`_, MACE, `ASE`_ and janus-core (and their dependecies). In addition libraries to satisfy the ASE calculator 
+It is impossible to define how to setup the program as many computer systems are slightly different, especially clusters. However, the program is written in python and some guidelines are as follows.
+It is likely that you need to create a python environment following the python `documentation`_ . 
+
+.. _documentation: https://docs.python.org/3/library/venv.html
+
+External libraries required are `NUMPY`_, `MACE`_, `ASE`_ and `_JANUS-CORE`_ (and their dependecies). In addition libraries to satisfy the ASE calculator 
 or MLIP potentials may be necessary.
 
 .. _NUMPY: https://numpy.org/
+.. _MACE: https://github.com/ACEsuit/mace
 .. _ASE: https://wiki.fysik.dtu.dk/ase/
+.. _JANUS-CORE: https://github.com/stfc/janus-core
 
+Once this is complete the program can be run using the command *python3 /path/to/prog/monte.py*.
 
 =========================
 3. How to run the program
 =========================
 
 
-The program requires three input files, *control*, *potentials* and *basin.xyz* that contain the
+The program requires three input files, *control*, *potentials* and *basin.xyz* (extended xyz) that contain the
 keywords for the functionality of the program, potential model and the atomic
-positions respectively (in extended xyz).
+positions respectively.
 
 -----------
 3.1 control

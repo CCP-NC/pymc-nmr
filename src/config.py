@@ -429,32 +429,50 @@ class Config (object):
     
     def distort_cell(self, indx, bulks, max_vol_change):
         r = np.random.random()
-
+        
         cell = np.zeros((3,3), dtype=np.float64)
         np.copyto(cell, self.vectors)
 
-        scale = 1.0 + (r - 0.5) * max_vol_change[indx]
+        scale = (r - 0.5) * max_vol_change[indx]
+        bulks[:] = 0.0
         bulks[indx] = scale
 
         for j in range(3):
 
-            self.vectors[j,1] = (1.0 + bulks(1))*cell[j,1] + 0.5*bulks(6)*cell[j,2] + 0.5*bulks(5)*cell[j,3]
-            self.vectors[j,2] = (1.0 + bulks(2))*cell[j,2] + 0.5*bulks(6)*cell[j,1] + 0.5*bulks(4)*cell[j,3]
-            self.vectors[j,3] = (1.0 + bulks(3))*cell[j,3] + 0.5*bulks(5)*cell[j,1] + 0.5*bulks(4)*cell[j,2]
+            self.vectors[j,0] = (1.0 + bulks[0])*cell[j,0] + 0.5*bulks[5]*cell[j,1] + 0.5*bulks[4]*cell[j,2]
+            self.vectors[j,1] = (1.0 + bulks[1])*cell[j,1] + 0.5*bulks[5]*cell[j,0] + 0.5*bulks[3]*cell[j,2]
+            self.vectors[j,2] = (1.0 + bulks[2])*cell[j,2] + 0.5*bulks[4]*cell[j,0] + 0.5*bulks[3]*cell[j,1]
 
         volume = self.get_volume()
-        print(self.vectors)
-        print(volume)
-        exit()
         
-        self.scale_positions(bulks)
+        self.scale_positions_strain(bulks)
 
+        #print(cell)
+        #print(self.pos)
+        #print(bulks)
+        #print(self.vectors)
+        #print(self.pos)
+        #print(volume)
+        
+        #exit()
         return volume
 
     def scale_positions(self, bulks):
 
         for i in range(self.natoms):
            self.pos[i,:] *= bulks[:]
+
+    def scale_positions_strain(self, bulks):
+        
+        cm = np.zeros(3,dtype=np.float64)
+
+        for i in range(self.natoms):
+
+            cm[:] = self.pos[i,:]
+            
+            self.pos[i,0] = (1.0 + bulks[0]) * cm[0] + 0.5 * bulks[5] * cm[1] + 0.5 * bulks[4]* cm[2]
+            self.pos[i,1] = (1.0 + bulks[1]) * cm[1] + 0.5 * bulks[5] * cm[0] + 0.5 * bulks[3]* cm[2]
+            self.pos[i,2] = (1.0 + bulks[2]) * cm[2] + 0.5 * bulks[4] * cm[0] + 0.5 * bulks[3]* cm[1]
 
     def get_positions(self):
         pos = np.zeros((self.natoms,3), dtype=np.float64)

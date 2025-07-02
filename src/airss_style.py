@@ -66,6 +66,17 @@ class AirssStyle:
         #setup the BasinHopWalker calculation and the moves
         self._setup_airss(spec, job, out_stream)
 
+    def write_statistics(self, numSteps, total_energy, cell_properties, stats_io):
+        stats_io.write(f" {numSteps} ")
+        stats_io.write(f" {total_energy } ")
+        stats_io.write(f" {cell_properties[0]} ")
+        stats_io.write(f" {cell_properties[1]} ")
+        stats_io.write(f" {cell_properties[2]} ")
+        stats_io.write(f" {cell_properties[3]} ")
+        stats_io.write(f" {cell_properties[4]} ")
+        stats_io.write(f" {cell_properties[5]} \n")
+        stats_io.flush()
+
     
     def run(self, spec: Species, fld: Field, job: JobControl, stats: Statistics, type_stats: TypeStatistics, basin: Config, numSteps, cycle, 
             initialise, restart_iteration, restart_energy, out_stream):
