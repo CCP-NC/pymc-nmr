@@ -414,9 +414,9 @@ class MonteCarlo:
         self.totalAtomMoves += 1
         self.attemptedAtomMoves[typ] += 1
 
-        print("before move ", atm, basin.pos[atm,:])
+        #print("before move ", atm, basin.pos[atm,:])
         old_pos = basin.make_atom_move(atm, self.distance_atom_max[typ])
-        print("after move ", atm, basin.pos[atm,:])
+        #print("after move ", atm, basin.pos[atm,:])
         
         #create atom object and calculate new energy
         new_basin = basin.create_atoms_object()
@@ -424,7 +424,7 @@ class MonteCarlo:
         
         deltaV = energy_new.get_total_energy() - energy_old.get_total_energy()
         deltaVB = deltaV * beta
-        print("smove ", energy_old.get_total_energy(), energy_new.get_total_energy(), deltaV, deltaVB)
+        #print("smove ", energy_old.get_total_energy(), energy_new.get_total_energy(), deltaV, deltaVB)
         #energyDifference.print_energy(0, out_stream)
         accept = False
         arg = np.random.random()
@@ -445,12 +445,12 @@ class MonteCarlo:
             
             self.noAtomMoves[typ] += 1
             self.successfulAtomMoves += 1
-            print("accepted ")
+            #print("accepted ")
             
         else:
             #revert basin back to its old state
             basin.reject_atom_move(atm, old_pos)
-            print("rejected")
+            #print("rejected")
 
 
     def move_volume(self, basin: Config, fld: Field, totalEnergy: Energy, spec: Species, job: JobControl, beta: float, out_stream):
@@ -498,7 +498,7 @@ class MonteCarlo:
         deltav = new_energy.get_total_energy() - oldEnergy.get_total_energy()
         #print("energies", new_energy.get_total_energy(), oldEnergy.get_total_energy(), deltav)
         arg = beta * (deltav + job.extPressure * (vol_new - vol_old) - (natoms) * betaInv * math.log(vol_new / vol_old))
-        print ("old ", oldEnergy.get_total_energy(), " new ", new_energy.get_total_energy(), " diff ", deltav, "arg ", math.exp(-arg))
+        #print ("old ", oldEnergy.get_total_energy(), " new ", new_energy.get_total_energy(), " diff ", deltav, "arg ", math.exp(-arg))
         rNum = np.random.random()
         
         if rNum < math.exp(-arg):
@@ -535,7 +535,7 @@ class MonteCarlo:
 
         deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
         deltaVB = beta * deltaV
-        print("swap ", old_energy.get_total_energy(), new_energy.get_total_energy(), deltaV, deltaVB)
+        #print("swap ", old_energy.get_total_energy(), new_energy.get_total_energy(), deltaV, deltaVB)
         accept = False
         arg = np.random.random()
         if deltaV < 0.0:
