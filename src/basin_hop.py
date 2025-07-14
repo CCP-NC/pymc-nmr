@@ -11,6 +11,7 @@ from Species import Species
 from config import Config
 from JobControl import JobControl
 from Statistics import Statistics, TypeStatistics
+from grid import Grid
 
 BOLTZMANN = .00008617333262145 # in eV
 EXIT_FAILURE = 1
@@ -30,6 +31,16 @@ class BasinHop:
         self.successfulUpSwaps = None
         self.swapType1 = []
         self.swapType2 = []
+
+        #combined atom swaps
+        self.numCombiSwaps = 0
+        self.successfulDownCombiSwaps = None
+        self.attemptedCombiSwaps = None
+        self.successfulUpCombiSwaps = None
+        self.combi_swapType1 = []
+        self.combi_swapType2 = []
+        self.combi_swapType3 = []
+        self.grd = None
 
         #semi grand or transmutational
         self.numTrans = 0
@@ -95,6 +106,55 @@ class BasinHop:
 
                 if ele1.charge != ele2.charge:
                     self.chargedSwap = True
+        #combined atom swaps
+        if job.num_combi_swap_atoms > 0:
+            self.numCombiSwaps = job.num_combi_swap_atoms
+            self.successfulDownSwaps = np.zeros(self.numCombiSwaps)
+            self.attemptedSwaps = np.zeros(self.numCombiSwaps)
+            self.successfulUpSwaps = np.zeros(self.numCombiSwaps)
+            for j in range(self.numCombiSwaps):
+                found = False
+
+                for i in range(numSpec):
+                    ele = spec.get_species(i)
+                    if ele.name == job.combi_swapType1[j]:
+                        self.combi_swapType1.append(job.combi_swapType1[j])
+                        found = True
+                        break
+
+                if not found:
+                    out_stream.write(f"\n combined atom swap type 1 {job.combi_swapType1[j]} not found in species list!\n")
+                    out_stream.flush()
+                    exit(EXIT_FAILURE)
+
+                found = False
+                for i in range(numSpec):
+                    ele = spec.get_species(i)
+                    if ele.name == job.combi_swapType2[j]:
+                        self.combi_swapType2.append(job.combi_swapType2[j])
+                        found = True
+                        break
+
+                if not found:
+                    out_stream.write(f"\n combined atom swap type 2 {job.combi_swapType2[j]} not found in species list!\n")
+                    out_stream.flush()
+                    exit(EXIT_FAILURE)
+
+                found = False
+                for i in range(numSpec):
+                    ele = spec.get_species(i)
+                    if ele.name == job.combi_swapType3[j]:
+                        self.combi_swapType3.append(job.combi_swapType3[j])
+                        found = True
+                        break
+
+                if not found:
+                    out_stream.write(f"\n combined atom swap type 3 {job.combi_swapType3[j]} not found in species list!\n")
+                    out_stream.flush()
+                    exit(EXIT_FAILURE)
+
+            #initialise the grid
+            self.grd = Grid(job.gridx, job.gridy, job.gridz, job.grid_cut)
 
         # Transmutation of atom positions
         if job.num_transmutate_atoms > 0:
@@ -131,7 +191,7 @@ class BasinHop:
     def _createMCMoves(self, job):
         self.numMCMoves = 0
 
-        self.numMCMoves = (job.mdMoveFreq + job.swapFrequency)
+        self.numMCMoves = (job.mdMoveFreq + job.swapFrequency + job.combi_swapFrequency)
 
         # Allocate mcMoveList array
         self.mcMoveList = np.zeros(self.numMCMoves, np.dtype('uint32'))
@@ -143,6 +203,10 @@ class BasinHop:
 
         for i in range(job.swapFrequency):
             self.mcMoveList[j] = 2
+            j += 1
+
+        for i in range(job.combi_swapFrequency):
+            self.mcMoveList[j] = 3
             j += 1
 
     def initialise(self, spec, job, out_stream):
@@ -210,6 +274,11 @@ class BasinHop:
 
             elif selection == 2:
                 self.swapAtoms_relax(basin, fld, totalEnergy, job, beta, out_stream)
+
+            elif selection == 3:
+                self.grd.build_grid(basin) # before overey combi-swap is possibly over-kill
+                                           #but I do not know how much they will move on relaxation
+                self.combi_atom_swap_relax(basin, fld, totalEnergy, job, beta, out_stream)
 
             #new_basin = basin.create_atoms_object()
             #energy_new = fld.calculate_energy(new_basin)
@@ -350,6 +419,58 @@ class BasinHop:
             basin.update_from_atoms(new_basin)
         else:
             basin.swap_atom_positions(atm1, atm2)
+
+    def combi_atom_swap_relax(self, basin: Config, fld: Field, totalEnergy: Energy, job: JobControl, beta: np.float64, out_stream):
+        
+        j = int(np.random.random() * self.numCombiSwaps)
+        print("swap selection ",j," ", self.numSwaps,self.combi_swapType1[j],self.combi_swapType2[j], self.combi_swapType3)
+        self.attemptedSwaps[j] += 1
+
+        atm1 = basin.select_atom_of_type(self.combi_swapType1[j])
+        atm2 = basin.select_atom_of_type(self.combi_swapType2[j])
+
+        if atm1 == -1 or atm2 == -1:
+            return
+        
+        atm3 = basin.find_closest_atom(atm2, self.combi_swapType3[j])
+        print("original atm2 pos",basin.symbol[atm2], basin.pos[atm2,0], basin.pos[atm2,1], basin.pos[atm2,2])
+        print("closest atm3 pos",basin.symbol[atm3], basin.pos[atm3,0], basin.pos[atm3,1], basin.pos[atm3,2])
+        old_pos = basin.get_positions() # so we know where to put it back
+
+        old_energy = Energy()
+        old_energy.totalEnergy = totalEnergy.totalEnergy
+        
+        #print("swapping ", atm1, basin.symbol[atm1], atm2, basin.symbol[atm2])
+        #print("pos atm1 ", basin.symbol[atm1], basin.pos[atm1,:])
+        #print("pos atm2 ", basin.symbol[atm2], basin.pos[atm2,:])
+        self.grid_swap_atom_positions(basin, atm1, atm2, atm3, job.combi_swap_dist)
+        
+        new_energy = Energy()
+        new_basin = basin.create_atoms_object()
+        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle)
+        
+        deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
+        deltaVB = beta * deltaV
+        #print("swap ", old_energy.get_total_energy(), new_energy.get_total_energy()," ", deltaV," ", beta, " ", deltaVB)
+        accept = False
+        arg = np.random.random()
+        if arg < np.exp(-deltaVB):
+            accept = True
+        
+        if accept:
+            totalEnergy.totalEnergy = new_energy.totalEnergy
+            write(filename="accepted.xyz", images=new_basin, format="extxyz", append=True)
+            if deltaV < 0.0:
+                self.successfulDownSwaps[j] += 1
+                if job.save_downhill:
+                    write(filename="downhill.xyz", images=new_basin, format="extxyz", append=True)
+            else:
+                self.successfulUpSwaps[j] += 1
+            print("combi swap accepted")
+            basin.update_from_atoms(new_basin)
+        else:
+            #basin.restore_grid_swap(atm1, atm2)
+            basin.set_positions(old_pos)
         
     def run_md(self, basin: Config, fld: Field, totalEnergy: Energy, job: JobControl, beta: np.float64, out_stream):
         
@@ -373,4 +494,24 @@ class BasinHop:
             totalEnergy.totalEnergy = new_energy.totalEnergy
 
             basin.update_from_atoms(new_basin)
+
+    def grid_swap_atom_positions(self, basin: Config, atm1, atm2, atm3, rcut):
+
+        basin.swap_atom_positions(atm1, atm2)
+
+        #get grid positions near the new position of atom 2
+        grd_list = self.grd.find_empty_grids(basin.pos[atm2,0], basin.pos[atm2,1], basin.pos[atm2,2], basin.get_vectors(), rcut)
+
+        if len(grd_list) == 0:
+            print("the value of combination swap distance is too small")
+            exit()
+
+        choice = int(len(grd_list) * np.random.random())
+        atm = grd_list[choice]
+        print("grid choice", atm)
+        basin.pos[atm3,:] = self.grd.grid_pos[atm,:]
+
+        print("atm2 pos",basin.symbol[atm2], basin.pos[atm2,0], basin.pos[atm2,1], basin.pos[atm2,2])
+        print("atm2 pos",basin.symbol[atm3], basin.pos[atm3,0], basin.pos[atm3,1], basin.pos[atm3,2])
+
         

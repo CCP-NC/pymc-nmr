@@ -485,6 +485,17 @@ class Config (object):
         
         np.copyto(self.pos, pos)
 
+    def  get_atom_positions(self, atm):
+        pos = np.zeros(3, dtype=np.float64)
+        
+        pos[:] = self.pos[atm,:]
+
+        return pos
+    
+    def set_atom_positions(self, atm, pos):
+        
+        self.pos[atm,:] = pos[:] 
+
     def get_vectors(self):
         vec = np.zeros((3,3), dtype=np.float64)
         
@@ -571,3 +582,59 @@ class Config (object):
         cell_prop[3] = fact * np.arccos(np.dot(self.vectors[1, :], self.vectors[2, :]) / (cell_prop[1] * cell_prop[2])) #galpha
 
         return cell_prop
+    
+    def check_overlap(self, x , y, z, radius):
+
+        overlap = False
+
+        for na in range(self.natoms):
+            
+            ax, ay, az = self.pos[na,0],self.pos[na,1], self.pos[na,2]
+
+            for nx in range(-1,2):
+                for ny in range(-1,2):
+                    for nz in range(-1,2):
+                        xx = ax + nx * self.vectors[0,0] + ny * self.vectors[1,0] + nz * self.vectors[2,0]
+                        yy = ay + nx * self.vectors[0,1] + ny * self.vectors[1,1] + nz * self.vectors[2,1]
+                        zz = az + nx * self.vectors[0,2] + ny * self.vectors[1,2] + nz * self.vectors[2,2]
+
+                        rx, ry, rz = x - xx, y - yy, z - zz
+                        rsq = rx * rx + ry * ry + rz * rz
+                        #print("check ",na,rx,ry,rz,np.sqrt(rsq), radius)
+                        if rsq <= radius:
+                            overlap = True
+
+        return overlap
+    
+    def find_closest_atom(self, atm, typ):
+
+        min_dist = 1.0e6
+        choice = -1
+
+        ax, ay, az = self.pos[atm,0], self.pos[atm,1], self.pos[atm,2]
+
+        for i in range(self.natoms):
+            if self.symbol[i] != typ or i == atm:
+                continue
+
+            bx, by, bz = self.pos[i,0],self.pos[i,1], self.pos[i,2]
+
+            for nx in range(-1,2):
+                for ny in range(-1,2):
+                    for nz in range(-1,2):
+                        xx = bx + nx * self.vectors[0,0] + ny * self.vectors[1,0] + nz * self.vectors[2,0]
+                        yy = by + nx * self.vectors[0,1] + ny * self.vectors[1,1] + nz * self.vectors[2,1]
+                        zz = bz + nx * self.vectors[0,2] + ny * self.vectors[1,2] + nz * self.vectors[2,2]
+
+                        rx, ry, rz = ax - xx, ay - yy, az - zz
+                        rsq = rx * rx + ry * ry + rz * rz
+                        #print("check ",i,rx,ry,rz,np.sqrt(rsq), np.sqrt(min_dist))
+                        if rsq <= min_dist:
+                            min_dist = rsq
+                            choice = i
+
+        print ("min dist", choice, min_dist)
+        return choice
+
+
+

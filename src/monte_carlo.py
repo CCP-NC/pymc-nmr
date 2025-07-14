@@ -363,6 +363,10 @@ class MonteCarlo:
         checkEnergy = final_energy - totalEnergy
         checkEnergy.print_energy(cycle, out_stream)
 
+        restart_io = open("restart.xyz", "w")
+        basin.write_config(restart_io, total_energy=totalEnergy.get_total_energy(), iteration=numSteps)
+        restart_io.close()
+
         out_stream.write("\n\n *****************************************************************************************************\n")
         out_stream.write(" Summary of simulation\n")
         out_stream.write(" *****************************************************************************************************\n")

@@ -30,6 +30,14 @@ class JobControl:
         self.swapFrequency = 0
         self.swapType1 = []
         self.swapType2 = []
+
+        self.num_combi_swap_atoms = 0
+        self.combi_swapFrequency = 0
+        self.combi_swapType1 = []
+        self.combi_swapType2 = []
+        self.combi_swapType3 = []
+        self.combi_swap_dist = 3.0
+
         self.num_transmutate_atoms = 0
         self.transmutateFrequency = 0
         self.mutateType1 = []
@@ -55,6 +63,12 @@ class JobControl:
         self.relsteps = 1000
         self.reltol = 1e-3
         self.relstyle = "conp"
+
+        #grid parameters
+        self.gridx = 10
+        self.gridy = 10
+        self.gridz = 10
+        self.grid_cut = 2.0
         
     def write_mc_control(self, out_io):
         
@@ -127,6 +141,17 @@ class JobControl:
                 out_io.write(f"\n         {self.swapType1[i]}  {self.swapType2[i]}")
                     
             out_io.write(f"\n atom swap frequency                      {self.swapFrequency} \n")
+
+        if self.num_combi_swap_atoms > 0:
+            out_io.write(f"\n atom types to be swapped \n")
+            for i in range(len(self.combi_swapType1)):
+                out_io.write(f"\n         {self.combi_swapType1[i]}  {self.combi_swapType2[i]} combined with type {self.combi_swapType3[i]}")
+                    
+            out_io.write(f"\n combined atom swap frequency             {self.combi_swapFrequency} \n")
+            out_io.write(f"\n combined atom swap distance              {self.combi_swap_dist} \n")
+
+            out_io.write(f"\n grid parameters {self.gridx} {self.gridy} {self.gridz} \n")
+            out_io.write(f"\n grid exclusion size {self.grid_cut} \n")
 
         if self.mdMoveFreq > 0:
             out_io.write(f"\n an MD will be undertaken with frequency  {self.mdMoveFreq} \n")
@@ -259,6 +284,17 @@ class JobControl:
                         words = line.split()
                         self.swapType1.append(words[0])
                         self.swapType2.append(words[1])
+                elif subWord == "combiswap":
+                    self.num_combi_swap_atoms = int(words[2])
+                    self.combi_swapFrequency = int(words[3])
+                    self.combi_swap_dist = float(words[4])
+
+                    for _ in range(self.num_combi_swap_atoms):
+                        line = in_stream.readline()
+                        words = line.split()
+                        self.combi_swapType1.append(words[0])
+                        self.combi_swapType2.append(words[1])
+                        self.combi_swapType3.append(words[2])
                 elif subWord == "moldyn":
                     self.mdMoveFreq = int(words[2])
                 else:
@@ -300,4 +336,9 @@ class JobControl:
                 self.writestats = True
             elif keyWord == "statsfreq":
                 self.writestats_freq = int(words[1])
+            elif keyWord == "grid":
+                self.gridx = float(words[1])
+                self.gridx = float(words[2])
+                self.gridx = float(words[3])
+                self.grid_cut = float(words[4])
 
