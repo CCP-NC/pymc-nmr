@@ -112,6 +112,10 @@ main input key words are
 +--------------+-------------+------------------------------------------------------+
 | statsfreq    | int         | frequency of writing data to stats file              |
 +--------------+-------------+------------------------------------------------------+
+| grid         | 3*int,float | the spacing of the combiswap grid and the cutoff     |
+|              |             | employed for the exclusion of regions                |
+|              |             | Default values are 10 10 10 and 2.0                  |
++--------------+-------------+------------------------------------------------------+
 | savedownhill |             | During basin hopping method any configuration that   |
 |              |             | has an energy lower than the previous configuration  |
 |              |             | will be saved (NB there may have been an up hill move|
@@ -192,8 +196,13 @@ These keywords follow the *move* command in the control file.
 |                | active in Monte Carlo simulations. An example is                   |
 +----------------+--------------------------------------------------------------------+
 | swap           | Swaps interchange the positions of two types. The number of atom   |
-|                | pairs and the probability of the move occuring. It is only         |
+|                | pairs and the probability of the move occuring. It is              |
 |                | active in all types of calculation.                                |
++----------------+--------------------------------------------------------------------+
+| combiswap      | This is the same as the standard swap except that an idditional    |
+|                | atom is moved in conjunction with the second atom and a grid is    |
+|                | employed to facilitate the location of this atom. It is only       |
+|                | active in basin hopping.  See tutorial 1 for an example.           |
 +----------------+--------------------------------------------------------------------+
 | moldyn         | This activates an NVT molecular dynamics calculation (only within  |
 |                | basin hopping). An integer gives the probability of this ooccuring.|

@@ -12,7 +12,7 @@ from Species import Species
 from Field import Field
 from grid import Grid
 
-
+# routine that uses cavity bias style to put K close to AL
 def main():
 
     fld = Field()
@@ -46,9 +46,28 @@ def main():
         out_stream.write("\n*** could not find configuration file: basin.xyz \n")
         sys.exit(1)
 
-    
-    grd = Grid(5,5,5, 2.0)
+    rcut = 3.5
+    grd = Grid(20,15,10, 2.0)
     grd.build_grid(basin)
+    #occ = grd.get_grid_occupancy()
+
+    for i in range(basin.natoms):
+        if basin.symbol[i] != "Al":
+            continue
+
+        #get gridpints within rcut of Al
+        grd_list = grd.find_empty_grids(basin.pos[i,0], basin.pos[i,1], basin.pos[i,2], basin.vectors, rcut)
+
+        if len(grd_list) == 0:
+            print("the value of combination swap distance is too small")
+            exit()
+
+        choice = int(len(grd_list) * np.random.random())
+        atm = grd_list[choice]
+        #basin.pos[atm,:] = grd.grid_pos[atm,:]
+
+        out_stream.write(f"\n K     {grd.grid_pos[atm,0]}   {grd.grid_pos[atm,1]}    {grd.grid_pos[atm,2]}")
+
     #########################################################################################################
     # start the dimulation
     #########################################################################################################

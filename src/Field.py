@@ -124,7 +124,7 @@ class Field:
 
         if flag:
             total_energy.totalEnergy = atoms.get_potential_energy()
-            print("field final energy ", atoms.get_potential_energy())
+            #print("field final energy ", atoms.get_potential_energy())
         else:
             total_energy.totalEnergy = 1.0e6
         

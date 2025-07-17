@@ -3,3 +3,8 @@ control
 EntryWithCollCode122377.cif  
 MACE-matpes-r2scan-omat-ft.model  
 potentials
+mc.log
+restart.xyz
+out 
+accepted.xyz
+archive.xyz

@@ -337,8 +337,8 @@ class JobControl:
             elif keyWord == "statsfreq":
                 self.writestats_freq = int(words[1])
             elif keyWord == "grid":
-                self.gridx = float(words[1])
-                self.gridx = float(words[2])
-                self.gridx = float(words[3])
+                self.gridx = int(words[1])
+                self.gridx = int(words[2])
+                self.gridx = int(words[3])
                 self.grid_cut = float(words[4])
 

@@ -109,9 +109,9 @@ class BasinHop:
         #combined atom swaps
         if job.num_combi_swap_atoms > 0:
             self.numCombiSwaps = job.num_combi_swap_atoms
-            self.successfulDownSwaps = np.zeros(self.numCombiSwaps)
-            self.attemptedSwaps = np.zeros(self.numCombiSwaps)
-            self.successfulUpSwaps = np.zeros(self.numCombiSwaps)
+            self.successfulDownCombiSwaps = np.zeros(self.numCombiSwaps)
+            self.attemptedCombiSwaps = np.zeros(self.numCombiSwaps)
+            self.successfulUpCombiSwaps = np.zeros(self.numCombiSwaps)
             for j in range(self.numCombiSwaps):
                 found = False
 
@@ -350,6 +350,12 @@ class BasinHop:
             out_stream.write(f"\n swaps {job.swapType1[j]} {job.swapType2[j]}: attempted, successful and ratio {self.attemptedSwaps[j]} {successfulSwaps} {swapRatio:.10e}\n")
             out_stream.write(f"\n swaps {job.swapType1[j]} {job.swapType2[j]}: Downhill and Uphill {self.successfulDownSwaps[j]} {self.successfulUpSwaps[j]} \n")
 
+        for j in range(self.numCombiSwaps):
+            swapRatio = (self.successfulUpCombiSwaps[j] + self.successfulDownCombiSwaps[j]) / self.attemptedCombiSwaps[j]
+            successfulSwaps = self.successfulUpCombiSwaps[j] + self.successfulDownCombiSwaps[j]
+            out_stream.write(f"\n combi-swaps {job.combi_swapType1[j]} {job.combi_swapType2[j]} {job.combi_swapType3[j]}: attempted, successful and ratio {self.attemptedCombiSwaps[j]} {successfulSwaps} {swapRatio:.10e}\n")
+            out_stream.write(f"\n combi-swaps {job.combi_swapType1[j]} {job.combi_swapType2[j]} {job.combi_swapType3[j]}: Downhill and Uphill {self.successfulDownCombiSwaps[j]} {self.successfulUpCombiSwaps[j]} \n")
+
         if self.numTrans > 0:
             forwardRatio = self.forwardMutations / self.attemptForwardMutations
             backwardRatio = self.backwardMutations / self.attemptBackwardMutations
@@ -377,7 +383,7 @@ class BasinHop:
         
 
         j = int(np.random.random() * self.numSwaps)
-        print("swap selection ",j," ", self.numSwaps,self.swapType1[j],self.swapType2[j])
+        #print("swap selection ",j," ", self.numSwaps,self.swapType1[j],self.swapType2[j])
         self.attemptedSwaps[j] += 1
 
         atm1 = basin.select_atom_of_type(self.swapType1[j])
@@ -423,8 +429,8 @@ class BasinHop:
     def combi_atom_swap_relax(self, basin: Config, fld: Field, totalEnergy: Energy, job: JobControl, beta: np.float64, out_stream):
         
         j = int(np.random.random() * self.numCombiSwaps)
-        print("swap selection ",j," ", self.numSwaps,self.combi_swapType1[j],self.combi_swapType2[j], self.combi_swapType3)
-        self.attemptedSwaps[j] += 1
+        #print("swap selection ",j," ", self.numSwaps,self.combi_swapType1[j],self.combi_swapType2[j], self.combi_swapType3)
+        self.attemptedCombiSwaps[j] += 1
 
         atm1 = basin.select_atom_of_type(self.combi_swapType1[j])
         atm2 = basin.select_atom_of_type(self.combi_swapType2[j])
@@ -433,8 +439,8 @@ class BasinHop:
             return
         
         atm3 = basin.find_closest_atom(atm2, self.combi_swapType3[j])
-        print("original atm2 pos",basin.symbol[atm2], basin.pos[atm2,0], basin.pos[atm2,1], basin.pos[atm2,2])
-        print("closest atm3 pos",basin.symbol[atm3], basin.pos[atm3,0], basin.pos[atm3,1], basin.pos[atm3,2])
+        #print("original atm2 pos",basin.symbol[atm2], basin.pos[atm2,0], basin.pos[atm2,1], basin.pos[atm2,2])
+        #print("closest atm3 pos",basin.symbol[atm3], basin.pos[atm3,0], basin.pos[atm3,1], basin.pos[atm3,2])
         old_pos = basin.get_positions() # so we know where to put it back
 
         old_energy = Energy()
@@ -461,12 +467,12 @@ class BasinHop:
             totalEnergy.totalEnergy = new_energy.totalEnergy
             write(filename="accepted.xyz", images=new_basin, format="extxyz", append=True)
             if deltaV < 0.0:
-                self.successfulDownSwaps[j] += 1
+                self.successfulDownCombiSwaps[j] += 1
                 if job.save_downhill:
                     write(filename="downhill.xyz", images=new_basin, format="extxyz", append=True)
             else:
-                self.successfulUpSwaps[j] += 1
-            print("combi swap accepted")
+                self.successfulUpCombiSwaps[j] += 1
+            #print("combi swap accepted")
             basin.update_from_atoms(new_basin)
         else:
             #basin.restore_grid_swap(atm1, atm2)
@@ -508,10 +514,10 @@ class BasinHop:
 
         choice = int(len(grd_list) * np.random.random())
         atm = grd_list[choice]
-        print("grid choice", atm)
+        #print("grid choice", atm)
         basin.pos[atm3,:] = self.grd.grid_pos[atm,:]
 
-        print("atm2 pos",basin.symbol[atm2], basin.pos[atm2,0], basin.pos[atm2,1], basin.pos[atm2,2])
-        print("atm2 pos",basin.symbol[atm3], basin.pos[atm3,0], basin.pos[atm3,1], basin.pos[atm3,2])
+        #print("atm2 pos",basin.symbol[atm2], basin.pos[atm2,0], basin.pos[atm2,1], basin.pos[atm2,2])
+        #print("atm2 pos",basin.symbol[atm3], basin.pos[atm3,0], basin.pos[atm3,1], basin.pos[atm3,2])
 
         

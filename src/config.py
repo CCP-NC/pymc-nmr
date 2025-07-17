@@ -633,7 +633,7 @@ class Config (object):
                             min_dist = rsq
                             choice = i
 
-        print ("min dist", choice, min_dist)
+        #print ("min dist", choice, min_dist)
         return choice
 
 

@@ -65,6 +65,9 @@ class Grid:
 
             #print("overlap", self.grid_occ[i])
 
+    def get_grid_occupancy(self):
+        return self.grid_occ
+
     def find_empty_grids(self, ax, ay, az, vectors, rcut):
 
         radius = rcut * rcut
@@ -85,7 +88,7 @@ class Grid:
                         rsq = rx * rx + ry * ry + rz * rz
                         #print("check ",i,rx,ry,rz,np.sqrt(rsq), radius)
                         if rsq <= radius and self.grid_occ[i] == 0:
-                            print("empty grid ",i,rx,ry,rz,np.sqrt(rsq), bx, by, bz)
+                            #print("empty grid ",i,rx,ry,rz,np.sqrt(rsq), bx, by, bz)
                             grd_list.append(i)
 
         return grd_list
