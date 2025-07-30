@@ -89,9 +89,12 @@ class Field:
 
         self.first_setup = False
 
-    def calculate_energy(self, atoms: Atoms):
+    def calculate_energy(self, atoms: Atoms, wrap):
         
         total_energy = Energy()
+
+        if wrap:
+            atoms.wrap()
         
         atoms.calc = self.janCalc
 
@@ -99,7 +102,7 @@ class Field:
         
         return total_energy
 
-    def calculate_energy_relax(self, atoms: Atoms, relmethod, relsteps, reltol, relstyle):
+    def calculate_energy_relax(self, atoms: Atoms, relmethod, relsteps, reltol, relstyle, wrap):
         
         total_energy = Energy()
 
@@ -109,6 +112,9 @@ class Field:
             mask=[1,1,1,0,0,0]
         else:
             mask=[1,1,1,1,1,1]
+
+        if wrap:
+            atoms.wrap()
        
         atoms.calc = self.janCalc
         
@@ -130,10 +136,12 @@ class Field:
         
         return total_energy
     
-    def run_md(self, atoms: Atoms, timestep, mdtemperature_K, mdfriction, mdsteps):
+    def run_md(self, atoms: Atoms, timestep, mdtemperature_K, mdfriction, mdsteps, wrap):
         
-        print("moldyn")
         total_energy = Energy()
+
+        if wrap:
+            atoms.wrap()
         
         atoms.calc = self.janCalc
 

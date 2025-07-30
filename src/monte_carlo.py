@@ -245,7 +245,7 @@ class MonteCarlo:
         fld.setup()
 
         new_basin = basin.create_atoms_object()
-        totalEnergy = fld.calculate_energy(new_basin)
+        totalEnergy = fld.calculate_energy(new_basin, job.wrap)
            
         #totalEnergy.totalEnergy = energy_new.totalEnergy
         totalEnergy.print_energy(1, out_stream)
@@ -271,7 +271,7 @@ class MonteCarlo:
             selection = self.mcMoveList[choice]
 
             if selection == 1:
-                self.move_atom(basin, fld, totalEnergy, beta, out_stream)
+                self.move_atom(basin, fld, totalEnergy, beta, job.wrap, out_stream)
 
             elif selection == 2:
                 self.swapAtoms(basin, fld, totalEnergy, job, beta, out_stream)
@@ -332,7 +332,7 @@ class MonteCarlo:
                 restart_io.close()
               
                 new_basin = basin.create_atoms_object()
-                checkEnergy = fld.calculate_energy(new_basin)
+                checkEnergy = fld.calculate_energy(new_basin, job.wrap)
                 basin.update_from_atoms(new_basin)
 
                 eDiff = checkEnergy.get_total_energy() - totalEnergy.get_total_energy()
@@ -355,7 +355,7 @@ class MonteCarlo:
         
         final_energy = Energy()
         new_basin = basin.create_atoms_object()
-        final_energy = fld.calculate_energy(new_basin)
+        final_energy = fld.calculate_energy(new_basin, job.wrap)
 
         final_energy.print_energy(0, out_stream)
 
@@ -398,7 +398,7 @@ class MonteCarlo:
 
     
 
-    def move_atom(self, basin: Config, fld: Field, total_energy: Energy, beta: float, out_stream):
+    def move_atom(self, basin: Config, fld: Field, total_energy: Energy, beta: float, wrap:bool, out_stream):
         
         
         choice = int(np.random.random() * self.noAtomMovers)
@@ -424,7 +424,7 @@ class MonteCarlo:
         
         #create atom object and calculate new energy
         new_basin = basin.create_atoms_object()
-        energy_new = fld.calculate_energy(new_basin)
+        energy_new = fld.calculate_energy(new_basin, wrap)
         
         deltaV = energy_new.get_total_energy() - energy_old.get_total_energy()
         deltaVB = deltaV * beta
@@ -497,7 +497,7 @@ class MonteCarlo:
 
         new_energy = Energy()
         new_basin = basin.create_atoms_object()
-        new_energy = fld.calculate_energy(new_basin)
+        new_energy = fld.calculate_energy(new_basin, job.wrap)
 
         deltav = new_energy.get_total_energy() - oldEnergy.get_total_energy()
         #print("energies", new_energy.get_total_energy(), oldEnergy.get_total_energy(), deltav)
@@ -535,7 +535,7 @@ class MonteCarlo:
 
         new_energy = Energy()
         new_basin = basin.create_atoms_object()
-        new_energy = fld.calculate_energy(new_basin)
+        new_energy = fld.calculate_energy(new_basin, job.wrap)
 
         deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
         deltaVB = beta * deltaV

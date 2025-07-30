@@ -8,6 +8,7 @@ class JobControl:
         self.num_cycles = 1
         self.mc_steps = 0
         self.num_boxes = 1
+        self.wrap = False
         self.extPressure = 0.0
         self.temperature = 0.0
         self.maxDistance: np.float64 = 0.001
@@ -231,6 +232,8 @@ class JobControl:
                 self.extPressure = float(words[1])
             elif keyWord == "temperature":
                 self.temperature = float(words[1])
+            elif keyWord == "wrap":
+                self.wrap = True
             elif keyWord == "maxdistance":
                 self.maxDistance = np.float64(words[1])
             elif keyWord == "distanceupdate":    

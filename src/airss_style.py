@@ -97,7 +97,7 @@ class AirssStyle:
                 basin.randomise(job.swapType1[i], job.swapType2[i], old_pos)
 
         new_basin = basin.create_atoms_object()
-        totalEnergy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle)
+        totalEnergy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle, job.wrap)
         basin.update_from_atoms(new_basin)
            
         totalEnergy.print_energy(1, out_stream)
@@ -123,7 +123,7 @@ class AirssStyle:
             self.randomise_relax(basin, fld, totalEnergy, job, out_stream)
 
             new_basin = basin.create_atoms_object()
-            energy_new = fld.calculate_energy(new_basin)
+            energy_new = fld.calculate_energy(new_basin, job.wrap)
             basin.update_from_atoms(new_basin)
             
             print("energy in main routine ", energy_new.totalEnergy)
@@ -151,7 +151,7 @@ class AirssStyle:
                 restart_io.close()
               
                 new_basin = basin.create_atoms_object()
-                checkEnergy = fld.calculate_energy(new_basin)
+                checkEnergy = fld.calculate_energy(new_basin, job.wrap)
                 basin.update_from_atoms(new_basin)
 
                 eDiff = checkEnergy.get_total_energy() - totalEnergy.get_total_energy()
@@ -171,7 +171,7 @@ class AirssStyle:
         
         final_energy = Energy()
         new_basin = basin.create_atoms_object()
-        final_energy = fld.calculate_energy(new_basin)
+        final_energy = fld.calculate_energy(new_basin, job.wrap)
         basin.update_from_atoms(new_basin)
 
         final_energy.print_energy(1, out_stream)
@@ -213,7 +213,7 @@ class AirssStyle:
         new_energy = Energy()
         new_basin = basin.create_atoms_object()
         #write(filename="shuffled.xyz", images=new_basin, format="extxyz", append=False)
-        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle)
+        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle, job.wrap)
         
         deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
     

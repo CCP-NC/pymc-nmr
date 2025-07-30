@@ -244,7 +244,7 @@ class BasinHop:
         fld.setup()
 
         new_basin = basin.create_atoms_object()
-        totalEnergy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle)
+        totalEnergy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle, job.wrap)
         basin.update_from_atoms(new_basin)
            
         totalEnergy.print_energy(1, out_stream)
@@ -309,7 +309,7 @@ class BasinHop:
                 restart_io.close()
               
                 new_basin = basin.create_atoms_object()
-                checkEnergy = fld.calculate_energy(new_basin)
+                checkEnergy = fld.calculate_energy(new_basin, job.wrap)
                 basin.update_from_atoms(new_basin)
 
                 eDiff = checkEnergy.get_total_energy() - totalEnergy.get_total_energy()
@@ -329,7 +329,7 @@ class BasinHop:
         
         final_energy = Energy()
         new_basin = basin.create_atoms_object()
-        final_energy = fld.calculate_energy(new_basin)
+        final_energy = fld.calculate_energy(new_basin, job.wrap)
         basin.update_from_atoms(new_basin)
 
         final_energy.print_energy(1, out_stream)
@@ -402,7 +402,7 @@ class BasinHop:
 
         new_energy = Energy()
         new_basin = basin.create_atoms_object()
-        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle)
+        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle, job.wrap)
         
         deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
         deltaVB = beta * deltaV
@@ -453,7 +453,7 @@ class BasinHop:
         
         new_energy = Energy()
         new_basin = basin.create_atoms_object()
-        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle)
+        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle, job.wrap)
         
         deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
         deltaVB = beta * deltaV
@@ -487,11 +487,11 @@ class BasinHop:
         new_basin = basin.create_atoms_object()
 
         #run an md simulation
-        fld.run_md(new_basin, job.mdtimestep, job.mdtemperature_K, job.mdfriction, job.mdsteps)
+        fld.run_md(new_basin, job.mdtimestep, job.mdtemperature_K, job.mdfriction, job.mdsteps, job.wrap)
 
         new_energy = Energy()
         #the energy needs to be relaxed to get the "new" energy
-        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle)
+        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle, job.wrap)
         
         if new_energy.totalEnergy > 1.0e5:   # ie it has failed to minimisa - this prevents it going into a stupid position
 
