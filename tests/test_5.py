@@ -29,6 +29,8 @@ def pymc_energy():
 
     fld = Field()
 
+    np.random.seed(0) # random seed to get same sequence
+
     basisFileName = "basin.xyz"
     fieldFileName = "potentials"
     
@@ -58,18 +60,28 @@ def pymc_energy():
         sys.exit(1)
 
     fld.setup()
+
     atoms = basin.create_atoms_object()
     old_energy = fld.calculate_energy(atoms, False)
 
-    basin.swap_atom_positions(16, 17)
+    atm1 = basin.select_atom_of_type("Si")
+    atm2 = basin.select_atom_of_type("Al")
+    basin.swap_atom_positions(atm1, atm2)
+
     atoms = basin.create_atoms_object()
     new_energy = fld.calculate_energy(atoms, False)
+    delta_v1 = old_energy.totalEnergy - new_energy.totalEnergy
 
-    return old_energy.totalEnergy - new_energy.totalEnergy
+    basin.swap_atom_positions(atm1, atm2)
+    atoms = basin.create_atoms_object()
+    new_energy = fld.calculate_energy(atoms, False)
+    delta_v2 = old_energy.totalEnergy - new_energy.totalEnergy
+
+    return delta_v1, delta_v2
 
 
-energy_pymc = pymc_energy()
-print(energy_pymc)
+delta_v1, delta_v2 = pymc_energy()
+print(delta_v1, delta_v2)
 
-assert energy_pymc == pytest.approx(0.22946624340920607)
-
+assert delta_v1 == pytest.approx(0.17007792199865435)
+assert delta_v2 == pytest.approx(0.0)

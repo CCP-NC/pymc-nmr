@@ -1,4 +1,4 @@
-#determines energy of MC swap
+#tests MC displacement of atoms
 import sys
 sys.path.insert(1, '../src')
 
@@ -24,8 +24,6 @@ def pymc_energy():
     restart_iteration = 0
     md_time = 0.0
 
-    np.random.seed(0) # random seed to get same sequence
-
     job = JobControl()
     spec = Species()
 
@@ -46,6 +44,8 @@ def pymc_energy():
         print("\n*** could not find potentials file\n")
         sys.exit(1)
 
+    np.random.seed(0)
+    
     # Read data from basis file in xyz format
     basin = Config()
     restart_iteration = 0
@@ -61,18 +61,19 @@ def pymc_energy():
 
     fld.setup()
     atoms = basin.create_atoms_object()
-    old_energy = fld.calculate_energy_relax(atoms, "lbfgs", 1000, 1.0e-3, "conp", False)
+    old_energy = fld.calculate_energy(atoms, False)
 
-    atm1 = basin.select_atom_of_type("Si")
-    atm2 = basin.select_atom_of_type("Al")
-    basin.swap_atom_positions(atm1, atm2)
+    atm = basin.select_atom_of_type("Si")
+    print(atm)
+    old_pos = basin.make_atom_move(atm, 0.1)
+
     atoms = basin.create_atoms_object()
-    new_energy = fld.calculate_energy_relax(atoms, "lbfgs", 1000, 1.0e-3, "conp", False)
+    new_energy = fld.calculate_energy(atoms, False)
     delta_v1 = old_energy.totalEnergy - new_energy.totalEnergy
 
-    basin.swap_atom_positions(atm1, atm2) # swap atoms back around
+    basin.reject_atom_move(atm, old_pos)
     atoms = basin.create_atoms_object()
-    new_energy = fld.calculate_energy_relax(atoms, "lbfgs", 1000, 1.0e-3, "conp", False)
+    new_energy = fld.calculate_energy(atoms, False)
     delta_v2 = old_energy.totalEnergy - new_energy.totalEnergy
 
     return delta_v1, delta_v2
@@ -81,6 +82,6 @@ def pymc_energy():
 delta_v1, delta_v2 = pymc_energy()
 print(delta_v1, delta_v2)
 
-assert delta_v1 == pytest.approx(-0.12121373476838926)
+assert delta_v1 == pytest.approx(0.0268727707330072)
 assert delta_v2 == pytest.approx(0.0)
 
