@@ -1,4 +1,4 @@
-#tests MC displacement of atoms
+#tests MC displacement of volume
 import sys
 sys.path.insert(1, '../src')
 
@@ -60,18 +60,22 @@ def pymc_energy():
         sys.exit(1)
 
     fld.setup()
+
     atoms = basin.create_atoms_object()
     old_energy = fld.calculate_energy(atoms, False)
 
-    atm = basin.select_atom_of_type("Si")
-    print(atm)
-    old_pos = basin.make_atom_move(atm, 0.1)
+    old_vec = basin.get_vectors()
+    old_pos = basin.get_positions()
+    bulks = np.ones(3, dtype=np.float64)
+    maxVol = 0.1
+    vol_new = basin.expand_cell_cubic(bulks, maxVol)
 
     atoms = basin.create_atoms_object()
     new_energy = fld.calculate_energy(atoms, False)
     delta_v1 = old_energy.totalEnergy - new_energy.totalEnergy
 
-    basin.reject_atom_move(atm, old_pos)
+    basin.set_positions(old_pos)
+    basin.set_vectors(old_vec)
     atoms = basin.create_atoms_object()
     new_energy = fld.calculate_energy(atoms, False)
     delta_v2 = old_energy.totalEnergy - new_energy.totalEnergy
@@ -82,6 +86,6 @@ def pymc_energy():
 delta_v1, delta_v2 = pymc_energy()
 print(delta_v1, delta_v2)
 
-assert delta_v1 == pytest.approx(0.0268727707330072)
+assert delta_v1 == pytest.approx(0.558811339897602)
 assert delta_v2 == pytest.approx(0.0)
 

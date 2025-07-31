@@ -82,5 +82,5 @@ delta_v1, delta_v2 = pymc_energy()
 print(delta_v1, delta_v2)
 
 assert delta_v1 == pytest.approx(-0.12121373476838926)
-assert delta_v2 == pytest.approx(0.0, 1.0e-6)
+assert delta_v2 == pytest.approx(0.0, rel=1.0e-6, abs=1.0e-6)
 

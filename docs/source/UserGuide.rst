@@ -52,7 +52,7 @@ It is likely that you need to create a python environment following the python `
 .. _documentation: https://docs.python.org/3/library/venv.html
 
 External libraries required are `NUMPY`_, `MACE`_, `ASE`_ and `_JANUS-CORE`_ (and their dependecies). In addition libraries to satisfy the ASE calculator 
-or MLIP potentials may be necessary.
+or MLIP potentials may be necessary. (if you want to run the tests then pytest also needs to be installed).
 
 .. _NUMPY: https://numpy.org/
 .. _MACE: https://github.com/ACEsuit/mace
