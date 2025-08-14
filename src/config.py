@@ -15,9 +15,6 @@ class Config (object):
 
     def __init__(self):
         
-        self.title = 'untitled config'
-        self.levcfg = 0
-        self.pbc = True
         self.natoms = 0
         self.numghost = 0
         self.symbol = []
@@ -29,10 +26,10 @@ class Config (object):
         self.total_energy = 0.0
 
     def reset_config(self):
+        """
+        Resets all the parameters within a Config object
+        """
 
-        self.title = 'untitled config'
-        self.levcfg = 0
-        self.pbc = 3
         self.natoms = 0
         self.numghost = 0
         self.vectors = np.zeros((3,3))
@@ -44,7 +41,15 @@ class Config (object):
         self.mass = None
 
     def create_atoms_object(self):
-        """create an atoms object removing all ghost atoms and returns the object"""
+        """
+        create an atoms object removing all ghost atoms and returns the object. Any ghost atoms are filtered out
+        as ASE does not like them.
+        
+        Returns
+        -------
+
+        Atoms object for use with ASE calculators
+        """
 
         nreal = self.natoms - self.numghost
         #print("create ",nreal,self.natoms,self.numghost)
@@ -64,8 +69,16 @@ class Config (object):
         return Atoms(symbols = symbols, positions=new_pos, cell= cell, pbc=True)
     
     def update_from_atoms(self, basin: Atoms):
-        """receives an atoms object and takes positions and vectors to upadte those of the
+        """
+        Receives an atoms object and takes positions and vectors to upadte those of the
            config object. It assumes the ordering of chemical symbols has not been changed
+           and allows for ghost atoms to be kept at the end.
+
+        Parameters
+        ----------
+
+        basin : Atoms object
+            new set of positions
         """
 
         symbols = basin.get_chemical_symbols()
@@ -83,9 +96,19 @@ class Config (object):
         #for i in range(self.natoms):
         #    print("update", self.symbol[i], self.pos[i,:])
     def setup_configuration(self, spec: Species, out_io):
-        """Takes a list of the element types and puts the mass and charge on each atom
+        """
+        Takes a list of the element types and puts the mass and charge on each atom
         The function also checks that all the species defined in the basin.xyz are present in the
-        element list
+        element list.
+
+        Parameters
+        ----------
+
+        spec : Species object
+            container for elemenal informations
+
+        out_io : IO
+            output stream
         """
 
         self.charge = np.zeros(self.natoms, dtype=np.float64)
@@ -117,10 +140,27 @@ class Config (object):
                 
     
     def get_number_of_atoms(self): #returns the number of atoms in a list to controling program
+        """ 
+        returns the number of atoms 
+        
+        Returns
+        -------
+        
+        natoms : int
+            The number of atoms
+        """
         return self.natoms 
         
     def get_volume(self):
-        """ calculates volume using numpy """
+        """ 
+        calculates volume using numpy 
+        
+        Returns
+        -------
+        
+        volume : float
+            The cell volume
+        """
         axb = np.cross(self.vectors[0][:], self.vectors[1][:])
         self.volume = np.dot(axb, self.vectors[2][:])
 
@@ -129,14 +169,19 @@ class Config (object):
                   
     #create a copy of the config
     def copy_config(self):
-        """ creates a copy of the Config object. The function creates a new object 
+        """ 
+        creates a copy of the Config object. The function creates a new object 
             copies arrays using numpy.copyto and then returns the object
+
+        Returns
+        -------
+
+        c : Config object
+            a new configuration
         """
 
         c = Config()
-        c.title = self.title
-        c.levcfg = self.levcfg
-        c.pbc = self.pbc
+        
         c.natoms = self.natoms
         c.numghost = self.numghost
 
@@ -162,7 +207,15 @@ class Config (object):
         return c
 
     def select_atom(self) -> int:
-        """ selects an atom at random and reurns its index number"""
+        """ 
+        chhoses an atom at random 
+        
+        Returns
+        -------
+        
+        choice : int
+            The chosen atom
+        """
         
         choice = -1
             
@@ -172,7 +225,21 @@ class Config (object):
         return choice     
         
     def select_atom_of_type(self, typ: str) -> int:
-        """ selects an atom of given type at random and reurns its index number"""
+        """ 
+        selects an atom of given type at random and reurns its index number
+
+        Parameters
+        ----------
+
+        typ : str
+            The atom type that is bing sought after
+        
+        Returns
+        -------
+        
+        atm : int
+            The chosen atom index
+        """
 
         atm = -1 
         choice = -1
@@ -197,7 +264,19 @@ class Config (object):
         return atm
     
     def randomise(self, typ1, typ2, positions):
-        """ creates a rondom distribution of two types of atoms (e.g. Si/Al) """
+        """ 
+        creates a rondom distribution of two types of atoms (e.g. Si/Al)
+
+        Parameters
+        ----------
+
+        typ1 : str
+            The first atom type
+        typ2 : str
+            The second atoms type to be randomised with the first
+        
+        """
+    
         swap_list = []
         shuffle_list = []
 
@@ -224,7 +303,22 @@ class Config (object):
                 print(i, self.pos[i,:])
 
     def find_num_types(self, typ: str) -> int:
-        """ determines the number of a given type of atom and returns it as an integer """
+        """ 
+        determines the number of a given type of atom and returns it as an integer
+
+        Parameters
+        ----------
+
+        typ : str
+            The atom type that is being counted
+        
+        Returns
+        -------
+        
+        num_typ : int
+            The number of atoms of a given type
+
+        """
         num_typ = 0
         for i in range(self.natoms):
             if typ == self.symbol[i]:
@@ -234,7 +328,17 @@ class Config (object):
     
 
     def swap_atom_positions(self, atm1: int, atm2: int):
-        """ swaps the positions of two atoms """
+        """ swaps the positions of two atoms 
+
+        Parameters
+        ----------
+
+        atm1 : int
+            The index of the first atom
+        atm2 : int
+            The index of the second atom
+        
+        """
 
         for j in range(3):
             tmp = self.pos[atm1,j]
@@ -243,13 +347,41 @@ class Config (object):
 
     
     def swap_atom_types(self, atm1: int, atm2: int):
-        """ swaps the atom types - not does not work if ghosts are present """
+        """ 
+        swaps the atom types - note does not work if ghosts are present 
+        
+        
+        Parameters
+        ----------
+
+        atm1 : int
+            The index of the first atom
+        atm2 : int
+            The index of the second atom
+            
+        """
 
         tmp = self.symbol[atm1]
         self.symbol[atm1] = self.symbol[atm2]
         self.symbol[atm2] = tmp
 
     def mutate_atom(self, atm: int, typ: int, spec: Species):
+
+        """ 
+        turns an atom into a different type
+        
+        Parameters
+        ----------
+        atm1 : int
+            The index of the atom to be altered
+
+        typ : int
+            The index of the atom type in the element list
+
+        spec : Species object
+            Contains all the parameters for the new species
+
+        """
         ele = spec.get_species(typ)
         self.symbol[atm] = ele.name
         self.mass[atm] = ele.mass
@@ -257,12 +389,40 @@ class Config (object):
         self.label[atm] = typ         
         
     def displace_atoms(self, delta):
+        """
+        displaces all the atoms by a specified amount
+        
+        Parameters
+        ----------
+        
+        delta : vector(float) 
+            displacement vector of size 3
+        """
         for i in range(self.natoms):
             self.pos[i,0] += delta[i,0]
             self.pos[i,1] += delta[i,1]
             self.pos[i,2] += delta[i,2]
 
     def make_atom_move(self, atm: int, dist_max: float):
+        """
+        displaces a single atom by a random amount upto a specified distance
+        
+        Parameters
+        ----------
+        
+        atm : int
+            the index of the atom to be removed
+            
+        dist_max : float
+            maximum distance for translation
+            
+        Returns
+        -------
+        
+        old_pos : vector(float)
+            the original position of the atom and can be used to reset the atom
+            
+        """
 
         old_pos = np.zeros(3, dtype=np.float64)
         for j in range(3):
@@ -276,13 +436,46 @@ class Config (object):
         return old_pos
     
     def reject_atom_move(self, atm: int, old_pos: np.ndarray):
+        """
+        Reset the atom positions after a displacement
+
+        Parameters
+        ----------
+        
+        atm : int
+            the index of the atom to be removed
+            
+        old_pos : vector(float)
+            the positions used to reset the atom
+
+        """
         for j in range(3):
             self.pos[atm][j] = old_pos[j]
 
     def read_config(self, instream):
         """
         reads in the simplified xyz file. very simplified for at the moment
+
+        Parameters
+        ----------
+        
+        instream : IO
+            the input stream for the file
+
+        Returns
+        -------
+
+        restart_iteration : int
+            the current simulation iteration used to continue a calculations
+
+        restart_time : float
+            the time from the internal clock 
+
+        restart_energy : float
+            the current energy of the configuration
+
         """
+
         restart_iteration = 1
         restart_time = 0.0
         restart_energy = 0.0
@@ -354,6 +547,24 @@ class Config (object):
         return restart_iteration, restart_time, restart_energy
     
     def expand_cell_cubic(self, bulks, max_vol_change):
+        """
+        Isotropic expansion of the unit cell in MC simulations
+
+        Parameters
+        ----------
+
+        bulks : vector(float)
+            the scaling parameter for each direction in x,y,z
+        
+        max_vol_change: float
+            the maximum amount the unit cell vectors can be altered
+
+        Returns
+        -------
+    
+        volume : float
+            the new volume of the unit cell
+        """
         r = np.random.random()
         
         scale = 1.0 + (r - 0.5) * max_vol_change
@@ -375,6 +586,27 @@ class Config (object):
         return volume
    
     def expand_cell_tetragonal(self, indx, bulks, max_vol_change):
+        """
+        Expansion of the unit cell in MC simulations with tetragonal symmetry ie a == b != c
+
+        Parameters
+        ----------
+
+        indx : int
+            the index of the cell that is going to be placed
+
+        bulks : vector(float)
+            the scaling parameter for each direction in x,y,z
+        
+        max_vol_change: float
+            the maximum amount the unit cell vectors can be altered
+
+        Returns
+        -------
+    
+        volume : float
+            the new volume of the unit cell
+        """
         r = np.random.random()
         #bulks = np.ones(3, dtype=np.float64)
         cell = self.vectors
@@ -400,6 +632,27 @@ class Config (object):
         return volume
        
     def expand_cell_orthorhombic(self, indx, bulks, max_vol_change):
+        """
+        Expansion of the unit cell in MC simulations with orthorohmbic symmetry ie a != b != c
+
+        Parameters
+        ----------
+
+        indx : int
+            the index of the cell that is going to be placed
+
+        bulks : vector(float)
+            the scaling parameter for each direction in x,y,z
+        
+        max_vol_change: float
+            the maximum amount the unit cell vectors can be altered
+
+        Returns
+        -------
+    
+        volume : float
+            the new volume of the unit cell
+        """
         r = np.random.random()
         cell = self.vectors
 
@@ -428,6 +681,27 @@ class Config (object):
         return volume
     
     def distort_cell(self, indx, bulks, max_vol_change):
+        """
+        Expansion of the unit cell in MC simulations with no assumed symmetry ie a != b != c
+
+        Parameters
+        ----------
+
+        indx : int
+            the index of the cell that is going to be placed
+
+        bulks : vector(float)
+            the scaling parameter for each direction in x,y,z
+        
+        max_vol_change: float
+            the maximum amount the unit cell vectors can be altered
+
+        Returns
+        -------
+    
+        volume : float
+            the new volume of the unit cell
+        """
         r = np.random.random()
         
         cell = np.zeros((3,3), dtype=np.float64)
@@ -458,12 +732,33 @@ class Config (object):
         return volume
 
     def scale_positions(self, bulks):
+        """
+        Adjustment of the atoms in the unit cell of a MC simulations to coincide with a volume displacement.
+        Assumes alpha = beta = gamma = 90.0
+
+        Parameters
+        ----------
+
+        bulks : vector(float)
+            the scaling parameter for each direction in x,y,z
+        
+        """
 
         for i in range(self.natoms):
            self.pos[i,:] *= bulks[:]
 
     def scale_positions_strain(self, bulks):
+        """
+        Adjustment of the atoms in the unit cell of a MC simulations to coincide with a volume displacement. There
+        is no assumption on angles.
+
+        Parameters
+        ----------
+
+        bulks : vector(float)
+            the scaling parameter for each direction in x,y,z
         
+        """
         cm = np.zeros(3,dtype=np.float64)
 
         for i in range(self.natoms):
@@ -475,6 +770,16 @@ class Config (object):
             self.pos[i,2] = (1.0 + bulks[2]) * cm[2] + 0.5 * bulks[4] * cm[0] + 0.5 * bulks[3]* cm[1]
 
     def get_positions(self):
+        """
+        returns a copy of the positions. NB a new matrix is created
+        
+        Returns
+        -------
+        
+        pos : np.ndarray
+            positions of the atoms
+            
+        """
         pos = np.zeros((self.natoms,3), dtype=np.float64)
         
         np.copyto(pos, self.pos)
@@ -482,10 +787,35 @@ class Config (object):
         return pos
     
     def set_positions(self, pos):
+        """
+        resets the positions. 
         
+        Parameters
+        ----------
+        
+        pos : np.ndarray
+            the new positions of the atoms to reset the config positions
+            
+        """
         np.copyto(self.pos, pos)
 
     def  get_atom_positions(self, atm):
+        """
+        returns a copy of the positions of an individual atom. NB a new matrix is created
+
+        Parameters
+        ----------
+
+        atm : int
+            the index of the atom to get the positions
+        
+        Returns
+        -------
+        
+        pos : np.ndarray
+            positions of the atoms
+            
+        """
         pos = np.zeros(3, dtype=np.float64)
         
         pos[:] = self.pos[atm,:]
@@ -493,10 +823,34 @@ class Config (object):
         return pos
     
     def set_atom_positions(self, atm, pos):
-        
+        """
+        set the positions of an individual atom. 
+
+        Parameters
+        ----------
+
+        atm : int
+            the index of the atom to get the positions
+
+        pos : np.ndarray
+            the new positions of the atom to reset the config positions
+            
+        """
+
         self.pos[atm,:] = pos[:] 
 
     def get_vectors(self):
+        """
+        returns a copy of the cell vectors. NB a new matrix is created
+        
+        Returns
+        -------
+        
+        vec : np.ndarray
+            new copy of the cell vectors
+            
+        """
+
         vec = np.zeros((3,3), dtype=np.float64)
         
         np.copyto(vec, self.vectors)
@@ -504,7 +858,16 @@ class Config (object):
         return vec
     
     def set_vectors(self, vec):
+        """
+        resets the cell vectors. 
         
+        Parameters
+        ----------
+        
+        vec : np.ndarray
+            the new cell vectors
+            
+        """
         np.copyto(self.vectors, vec)
 
     def restore_cell(self, basin, bulks, indx):
@@ -566,7 +929,16 @@ class Config (object):
         outstream.close()
         
     def cell_properties(self):
-        """ calculates the properties of a cell and returns a vector """
+        """ 
+        calculates the dimensions of a cell and angles
+        
+        Returns
+        -------
+         
+        cell_prop : vector 
+            vector containing cell lenghts and angles
+            
+        """
         cell_prop = np.zeros(6)
     
         
@@ -584,6 +956,25 @@ class Config (object):
         return cell_prop
     
     def check_overlap(self, x , y, z, radius):
+        """
+        checks whether a given position overlaps with atom positions. Decided if the distance is less than a buffer zone radius
+        
+        Parameters
+        ----------
+        
+        x, y, z : 3*float
+            the cartesian positions of the point in space
+            
+        radius : float
+            the minimum distance that is used to trigger an overlap
+            
+        Returns
+        -------
+        
+        overlap : bool
+            true if an overlap is found otherwise false is returned
+            
+        """
 
         overlap = False
 
@@ -607,6 +998,24 @@ class Config (object):
         return overlap
     
     def find_closest_atom(self, atm, typ):
+        """
+        Finds the closest atom of a given type to another atom
+
+        Parameters
+        ----------
+
+        atm : int
+            the index of the atom we want to find the closest atom to
+
+        typ : str
+            the chemical symbol of atoms being searched over
+
+        Returns
+        -------
+
+        choice : int
+            the index of the atom that is closest to the original atom
+        """
 
         min_dist = 1.0e6
         choice = -1

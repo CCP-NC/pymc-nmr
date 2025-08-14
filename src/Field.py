@@ -17,24 +17,34 @@ class Field:
 
     def __init__(self):
         
-        self.model = None
-        self.struc = None
-        self.cutoff = 0.0
-        self.species = None
-        #self.atoms = None
+        self.model = None # full path to the MLIP parameters
+        self.species = None # list of elements
 
-        self.device = "cuda"
+        self.device = "cuda" # device where the calculations for MLIP are undertaken
+        self.janCalc = None # Calculator
 
-        #self.atoms = Atoms()
-        self.janCalc = None #janCalculator()
+        self.arch = "mace_mp" # MLIP type or architecture
+        self.precision = "float64" # precision used by MLIP
 
-        self.arch = "mace_mp"
-        self.precision = "float64"
-
-        self.first_setup = True
+        self.first_setup = True # flag if multiple calls are carried out to prevent further setup+
 
     def readPotential(self, in_stream, out_stream, spec: Species):
-        #read the species and potentials
+        """
+        This function read in the species and location of MLIP library
+
+        Parameters
+        ----------
+
+        in_stream : io stream
+            stream for reading data - should already be opened
+
+        out_stream :  io stream 
+            stream for writing - it is redundant in this instance but included for expansion etc
+            
+        spec : Species object
+            list of elements
+
+        """
 
         while True:
             line = in_stream.readline()
@@ -72,12 +82,18 @@ class Field:
         
         
     def setup(self):
-
+        """
+        The function sets up the fiels and creates an ASE calculator for use later
+        """
         if self.first_setup == False:
             return
         
         if self.model is None:
             print("a model name is required")
+            exit(-1)
+
+        if self.species == None:
+            print("the spcies must be provided")
             exit(-1)
         
         try:
@@ -90,6 +106,25 @@ class Field:
         self.first_setup = False
 
     def calculate_energy(self, atoms: Atoms, wrap):
+        """
+        The subroutine is a wrapper around ASE get_potential_energy function
+
+        Parameters
+        ----------
+        atoms : Atoms
+            An ASE atoms object with positions etc
+
+        wrap : bool
+            if true the cell is reconfigured so that all atoms are within the box
+
+        returns the total energy
+
+        Returns
+        -------
+
+        total_energy : float
+            the final energy in eV
+        """
         
         total_energy = Energy()
 
@@ -103,6 +138,35 @@ class Field:
         return total_energy
 
     def calculate_energy_relax(self, atoms: Atoms, relmethod, relsteps, reltol, relstyle, wrap):
+        """
+        The subroutine is a wrapper around ASE energy/force minimisation routines
+
+        Parameters
+        ----------
+        atoms : Atoms
+            An ASE atoms object with positions etc
+
+        relmethod : str
+            string indetifying the relaxation method
+
+        relsteps : int
+            the max number of steps
+
+        reltol : float
+            accuracy of the minimisation
+
+        selstyle : str
+            indentifies which cell parameters should be relaxed
+
+        wrap : bool
+            if true the cell is reconfigured so that all atoms are within the box
+
+        Returns
+        -------
+
+        total_energy : float
+            the final energy in eV on a valid minimisation else a very high energy is sent back
+        """
         
         total_energy = Energy()
 
@@ -137,7 +201,36 @@ class Field:
         return total_energy
     
     def run_md(self, atoms: Atoms, timestep, mdtemperature_K, mdfriction, mdsteps, wrap):
+        """
+        The subroutine is a wrapper around ASE constant volume MD. An MD of specified length
+        is undertaken using the Langevin thormostat to shake the system.
+
+        Parameters
+        ----------
+        atoms : Atoms
+            An ASE atoms object with positions etc
+
+        timestep : float
+            the MD timestep in fs
+
+        mdtemperature_K : float
+            the temperature in Kelvin
+
+        mdfriction : float
+            friction parameter for the Langevin thermostat
+
+        mdsteps : str
+            the number of steps for the MD simulations
+
+        wrap : bool
+            if true the cell is reconfigured so that all atoms are within the box
         
+        Returns
+        -------
+
+        total_energy : float
+            the final energy in eV 
+        """
         total_energy = Energy()
 
         if wrap:

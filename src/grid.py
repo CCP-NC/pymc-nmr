@@ -7,22 +7,28 @@ class Grid:
 
     def __init__(self, numx, numy, numz, rcut = 2.0):
         
-        self.numx: int = numx
-        self.numy: int = numy
-        self.numz: int = numz
+        self.numx: int = numx # mumber of points along x
+        self.numy: int = numy # mumber of points along y
+        self.numz: int = numz # mumber of points along z
 
-        self.grid_pos = None
-        
-        self.grid_occ = None
-        self.rcut = rcut
+        self.rcut = rcut # distance use to identify whether a grid point is occupied or not
 
         ntot = int(self.numx * self.numy * self.numz)
-        self.grid_pos = np.zeros((ntot, 3), dtype=np.float64)
-        self.grid_occ = np.zeros(ntot, dtype=np.int32)
+        self.grid_pos = np.zeros((ntot, 3), dtype=np.float64) # positions of grid points in the unit cell
+        self.grid_occ = np.zeros(ntot, dtype=np.int32) # occupancy of gridpoint
 
 
     def build_grid(self, cfg:Config):
+        """
+        calculates the positions of the grid point and determines the distance to atoms within a configuration. If the distance is less than rcut then the grid position 
+        is considered to be occupied
+        
+        Parameters
+        ----------
 
+        cfg : Config object
+            the atomic positions and cell vectors
+        """
         
         #cell is the lattice vectors
         cell = cfg.get_vectors()
@@ -66,9 +72,35 @@ class Grid:
             #print("overlap", self.grid_occ[i])
 
     def get_grid_occupancy(self):
+        """
+        returns the vector containing the occupancy of the grid
+        """
+
         return self.grid_occ
 
     def find_empty_grids(self, ax, ay, az, vectors, rcut):
+        """
+        Given a set of positions this function finds unoccpied grid points within a a radius
+
+        Parameters
+        ----------
+
+        ax, ay, az : float
+            the positions of an atom under scrutiny
+
+        vectors : numpy array
+             cell vectors
+
+        rcut : float
+            the max distance between the gridpoint and the atom
+
+        Returns
+        -------
+
+        grd_list : List
+            a list of possible grid points
+        
+        """
 
         radius = rcut * rcut
         grd_list = []
