@@ -63,6 +63,22 @@ class BasinHop:
         self.md_runs = 0
 
     def _setupBasinHop(self, spec: Species, job: JobControl, out_stream):
+        """
+        sets up and checks the different types of swap
+        
+        Parameters
+        ----------
+
+        spec : Species oblect
+            elemental data
+        
+        job : JobControl object
+            control parameters
+
+        out_stream : IO
+            output file mc.log stream
+
+        """
         numSpec = spec.get_num_species()
 
         
@@ -189,6 +205,17 @@ class BasinHop:
                     exit(EXIT_FAILURE)
 
     def _createMCMoves(self, job):
+
+        """
+        The MC moves are created with the appropriate probability
+        
+        Parameters
+        ----------
+
+        job : JobControl object
+            control parameters
+
+        """
         self.numMCMoves = 0
 
         self.numMCMoves = (job.mdMoveFreq + job.swapFrequency + job.combi_swapFrequency)
@@ -210,7 +237,22 @@ class BasinHop:
             j += 1
 
     def initialise(self, spec, job, out_stream):
-        #setup the BasinHopWalker calculation and the moves
+        """
+        initialises the Basin Hopping functionality
+        
+        Parameters
+        ----------
+
+        spec : Species oblect
+            elemental data
+        
+        job : JobControl object
+            control parameters
+
+        out_stream : IO
+            output file mc.log stream
+
+        """
         self._setupBasinHop(spec, job, out_stream)
 
         self._createMCMoves(job)
@@ -229,6 +271,46 @@ class BasinHop:
     
     def run(self, spec: Species, fld: Field, job: JobControl, stats: Statistics, type_stats: TypeStatistics, basin: Config, numSteps, cycle, 
             initialise, restart_iteration, restart_energy, out_stream):
+        """
+        The function that controls the Basin Hopping functionality and the flow of data output
+
+        Parameters
+        ----------
+
+        spec : Species oblect
+            elemental data
+        
+        fld : Field
+            MLIP parameters and calculation of energies
+
+        job : JobControl object
+            control parameters
+
+        stats : Statistics object
+            maintains data on energies and unit cell
+
+        type_stats: TypeStatistics
+            maintains data on the number of types in the unit cell
+        basin: Config
+            initial configuration
+             
+        numSteps : int
+            the number of steps within the current simulation
+            
+        cycle : int
+             
+        initialise : bool
+            flag to indicate whether any initialisation is required
+            
+        restart_iteration : int
+            the iteration read in from the configuration file
+        
+        restart_energy : float
+            the energy read in from the configuration file
+            
+        out_stream : IO
+            output file mc.log stream
+        """
 
         totalEnergy = Energy()
         checkEnergy = Energy()
@@ -379,7 +461,31 @@ class BasinHop:
 
 
     def swapAtoms_relax(self, basin: Config, fld: Field, totalEnergy: Energy, job: JobControl, beta: np.float64, out_stream):
-        
+        """
+        Swaps two atoms and then uses energy minimisation. The old and new energies are used within Boltzmann sampling
+
+        Parameters
+        ----------
+
+        basin : Config
+            The working configuration of atoms
+
+        fld : Field
+            The container for the energy minimisation using ASE calculator
+
+        totalEnergy : Energy
+            The working energy of the cell
+
+        job : JobControl
+            control parameters
+
+        beta : float
+            1 / kT
+
+        out_stream : IO
+            stream for writing out data
+
+        """
         
 
         j = int(np.random.random() * self.numSwaps)
@@ -427,7 +533,32 @@ class BasinHop:
             basin.swap_atom_positions(atm1, atm2)
 
     def combi_atom_swap_relax(self, basin: Config, fld: Field, totalEnergy: Energy, job: JobControl, beta: np.float64, out_stream):
-        
+        """
+        Swaps two atoms and then uses energy minimisation. A third atom is also moved to a suitable space in the structure/zeolite.
+        The old and new energies are used within Boltzmann sampling - it does NOT obey detailed balance
+
+        Parameters
+        ----------
+
+        basin : Config
+            The working configuration of atoms
+
+        fld : Field
+            The container for the energy minimisation using ASE calculator
+
+        totalEnergy : Energy
+            The working energy of the cell
+
+        job : JobControl
+            control parameters
+
+        beta : float
+            1 / kT
+
+        out_stream : IO
+            stream for writing out data
+
+        """
         j = int(np.random.random() * self.numCombiSwaps)
         #print("swap selection ",j," ", self.numSwaps,self.combi_swapType1[j],self.combi_swapType2[j], self.combi_swapType3)
         self.attemptedCombiSwaps[j] += 1
@@ -479,6 +610,31 @@ class BasinHop:
             basin.set_positions(old_pos)
         
     def run_md(self, basin: Config, fld: Field, totalEnergy: Energy, job: JobControl, beta: np.float64, out_stream):
+        """
+        MD is used to shake the atoms into new configuration and then uses energy minimisation. 
+
+        Parameters
+        ----------
+
+        basin : Config
+            The working configuration of atoms
+
+        fld : Field
+            The container for the energy minimisation using ASE calculator
+
+        totalEnergy : Energy
+            The working energy of the cell
+
+        job : JobControl
+            control parameters
+
+        beta : float
+            1 / kT
+
+        out_stream : IO
+            stream for writing out data
+
+        """
         
         self.md_runs += 1
 
@@ -502,6 +658,28 @@ class BasinHop:
             basin.update_from_atoms(new_basin)
 
     def grid_swap_atom_positions(self, basin: Config, atm1, atm2, atm3, rcut):
+        """
+        Swaps the two atoms and then uses a cavity bias style approach to find a position for the thirs atom
+        
+        Parameters
+        ----------
+
+        basin : Config
+            The working configuration of atoms
+        
+        atm1 : int
+            index of the first atom
+
+        atm2 : int
+            index of the second atom
+
+        atm3 : int
+            index of the third atom where a space is required
+        
+        rcut : float
+            the maximum distance for the grid point away from the second atom
+
+        """
 
         basin.swap_atom_positions(atm1, atm2)
 
