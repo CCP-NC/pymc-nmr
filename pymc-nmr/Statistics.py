@@ -3,7 +3,7 @@ import numpy as np
 import math
 
 from typing import List
-from Species import Species  
+from species import Species  
 from Energy import Energy
 from config import Config
 

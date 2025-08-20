@@ -4,7 +4,7 @@ import numpy as np
 from scipy import linalg
 from ase import Atoms
 
-from Species import Species, Element
+from species import Species, Element
 
 class Config (object):
     """Config class stores attributes relating to the crystal structure

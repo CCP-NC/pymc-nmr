@@ -10,7 +10,7 @@ from datetime import datetime
 
 from config import Config
 from JobControl import JobControl
-from Species import Species
+from species import Species
 from Statistics import Statistics, TypeStatistics
 from Field import Field
 from basin_hop import BasinHop

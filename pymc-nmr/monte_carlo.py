@@ -6,7 +6,7 @@ from ase import Atoms
 
 from Energy import Energy
 from Field import Field
-from Species import Species
+from species import Species
 from JobControl import JobControl
 from Statistics import Statistics, TypeStatistics
 from config import Config

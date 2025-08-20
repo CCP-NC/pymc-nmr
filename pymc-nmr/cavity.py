@@ -8,7 +8,7 @@ import sys
 from datetime import datetime
 
 from config import Config
-from Species import Species
+from species import Species
 from Field import Field
 from grid import Grid
 

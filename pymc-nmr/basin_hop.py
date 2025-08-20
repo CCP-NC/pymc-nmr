@@ -7,7 +7,7 @@ from ase.io import write
 
 from Energy import Energy
 from Field import Field
-from Species import Species
+from species import Species
 from config import Config
 from JobControl import JobControl
 from Statistics import Statistics, TypeStatistics

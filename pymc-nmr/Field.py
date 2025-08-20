@@ -11,7 +11,7 @@ from ase.units import fs
 from janus_core.helpers.mlip_calculators import choose_calculator
 
 from Energy import Energy
-from Species import Species
+from species import Species
 
 class Field:
 
