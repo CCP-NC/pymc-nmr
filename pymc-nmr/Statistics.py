@@ -4,7 +4,7 @@ import math
 
 from typing import List
 from species import Species  
-from Energy import Energy
+from energy import Energy
 from config import Config
 
 """

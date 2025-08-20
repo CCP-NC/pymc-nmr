@@ -10,7 +10,7 @@ from ase.units import fs
 
 from janus_core.helpers.mlip_calculators import choose_calculator
 
-from Energy import Energy
+from energy import Energy
 from species import Species
 
 class Field:

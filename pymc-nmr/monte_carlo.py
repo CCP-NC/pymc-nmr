@@ -4,7 +4,7 @@ from typing import List
 
 from ase import Atoms
 
-from Energy import Energy
+from energy import Energy
 from Field import Field
 from species import Species
 from JobControl import JobControl
