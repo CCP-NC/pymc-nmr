@@ -5,10 +5,10 @@ from typing import List
 from ase import Atoms
 
 from energy import Energy
-from Field import Field
+from field import Field
 from species import Species
-from JobControl import JobControl
-from Statistics import Statistics, TypeStatistics
+from job_control import JobControl
+from statistics import Statistics, TypeStatistics
 from config import Config
 
 BOLTZMANN = .00008617333262145 # in eV

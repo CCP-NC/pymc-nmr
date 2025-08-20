@@ -9,10 +9,10 @@ import sys
 from datetime import datetime
 
 from config import Config
-from JobControl import JobControl
+from job_control import JobControl
 from species import Species
-from Statistics import Statistics, TypeStatistics
-from Field import Field
+from statistics import Statistics, TypeStatistics
+from field import Field
 from basin_hop import BasinHop
 from airss_style import AirssStyle
 from monte_carlo import MonteCarlo

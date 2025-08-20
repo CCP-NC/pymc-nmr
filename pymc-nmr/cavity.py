@@ -9,7 +9,7 @@ from datetime import datetime
 
 from config import Config
 from species import Species
-from Field import Field
+from field import Field
 from grid import Grid
 
 # routine that uses cavity bias style to put K close to AL

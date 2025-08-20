@@ -6,11 +6,11 @@ from ase import Atoms
 from ase.io import write
 
 from energy import Energy
-from Field import Field
+from field import Field
 from species import Species
 from config import Config
-from JobControl import JobControl
-from Statistics import Statistics, TypeStatistics
+from job_control import JobControl
+from statistics import Statistics, TypeStatistics
 from grid import Grid
 
 BOLTZMANN = .00008617333262145 # in eV
