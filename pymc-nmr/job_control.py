@@ -72,7 +72,16 @@ class JobControl:
         self.grid_cut = 2.0
         
     def write_mc_control(self, out_io):
-        
+        """
+        writes out to a file the control parameters that are pertinent to the MC calculation
+
+        Parameters
+        ----------
+
+        out_io : io
+            the file stream for the writing of data
+        """
+
         out_io.write(f"\n the number of steps                      {self.mcSteps} \n")
         out_io.write(f"\n pressure                                 {self.extPressure} \n")
         out_io.write(f"\n temperature                              {self.temperature} \n")
@@ -126,7 +135,16 @@ class JobControl:
             out_io.write(f"\n energy data will be written to a file every {self.writestats_freq} steps \n")
             
     def write_bh_control(self, out_io):
-        
+        """
+        writes out to a file the control parameters that are pertinent to the basin hopping calculation
+
+        Parameters
+        ----------
+
+        out_io : io
+            the file stream for the writing of data
+        """
+
         out_io.write(f"\n the number of steps                      {self.mcSteps} \n")
         out_io.write(f"\n temperature                              {self.temperature} \n")
         out_io.write(f"\n print frequency                          {self.printFreq} \n")
@@ -179,7 +197,15 @@ class JobControl:
             out_io.write(f"\n energy data will be written to a file every {self.writestats_freq} steps \n")
 
     def write_airss_control(self, out_io):
-        
+        """
+        writes out to a file the control parameters that are pertinent to the AIRSS-style calculation
+
+        Parameters
+        ----------
+
+        out_io : io
+            the file stream for the writing of data
+        """
         out_io.write(f"\n the number of steps                      {self.mcSteps} \n")
         
         out_io.write(f"\n print frequency                          {self.printFreq} \n")
@@ -209,6 +235,19 @@ class JobControl:
             out_io.write(f"\n energy data will be written to a file every {self.writestats_freq} steps \n")
 
     def read_job_control(self, in_stream, out_stream):
+        """
+        writes out to a file the control parameters that are pertinent to the MC calculation
+
+        Parameters
+        ----------
+
+        in_stream : io
+            the file stream for reading the data
+
+        out_stream : io
+            the file stream for the writing of errors etc
+        """
+        
         while True:
             line = in_stream.readline()
             if not line:

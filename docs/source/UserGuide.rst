@@ -346,6 +346,8 @@ class and controls the calculation style.
 +----------------+-------------+------------------------------------------------------+
 | model          | string      | The full path to the MLIP model is required          |
 +----------------+-------------+------------------------------------------------------+
+| dispersion     |             | switches on dispersion (default: False)              |
++----------------+-------------+------------------------------------------------------+
 
 An example of a potentials file for STA30 containing both H and K ::
 

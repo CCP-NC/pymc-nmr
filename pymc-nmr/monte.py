@@ -19,6 +19,10 @@ from monte_carlo import MonteCarlo
 
 
 def main():
+    """
+    This is the principal function that reads in all the data required (initial config, force field, control) and starts to set the calculation up
+    Either a MC, basin hopping and AIRSS-style calculation is initiated
+    """
     restart_iteration = 0
     md_time = 0.0
 

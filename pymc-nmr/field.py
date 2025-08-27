@@ -18,13 +18,14 @@ class Field:
     def __init__(self):
         
         self.model = None # full path to the MLIP parameters
-        self.species = None # list of elements
+        self.species = False # flag to check read
 
         self.device = "cuda" # device where the calculations for MLIP are undertaken
         self.janCalc = None # Calculator
 
         self.arch = "mace_mp" # MLIP type or architecture
         self.precision = "float64" # precision used by MLIP
+        self.dispersion = False # flag to indicate dispersion calculation
 
         self.first_setup = True # flag if multiple calls are carried out to prevent further setup+
 
@@ -66,6 +67,7 @@ class Field:
             elif words[0] == "species":
                 num = int(words[1])
                 spec.load_species(in_stream, num)
+                self.species = True
 
             elif words[0].lower() == "device":
                 self.device = words[1].lower()
@@ -78,6 +80,9 @@ class Field:
 
             elif words[0].lower() == "model":
                 self.model = words[1]
+
+            elif words[0].lower() == "dispersion":
+                self.dispersion = True
 
         
         
@@ -97,7 +102,11 @@ class Field:
             exit(-1)
         
         try:
-            self.janCalc = choose_calculator(architecture=self.arch, model=self.model, precision=self.precision, device=self.device)
+
+            if self.dispersion == False:
+                self.janCalc = choose_calculator(architecture=self.arch, model=self.model, precision=self.precision, device=self.device)
+            else:
+                self.janCalc = choose_calculator(architecture=self.arch, model=self.model, precision=self.precision, device=self.device, calc_kwargs={'dispersion' : True})
         except Exception as e:
             print(f"{e} whilst trying to load {self.model}\n")
             exit()
