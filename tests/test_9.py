@@ -1,6 +1,6 @@
 #tests MC displacement of volume
 import sys
-sys.path.insert(1, '../src')
+sys.path.insert(1, '../pymc-nmr')
 
 from ase.filters import UnitCellFilter
 from ase import Atoms
@@ -13,10 +13,10 @@ import numpy as np
 import pytest
 
 from config import Config
-from JobControl import JobControl
-from Species import Species
-from Field import Field
-from Energy import Energy
+from job_control import JobControl
+from species import Species
+from field import Field
+from energy import Energy
 
 
 

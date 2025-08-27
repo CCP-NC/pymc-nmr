@@ -16,7 +16,7 @@ device = "cuda"
 precsn = "float64"
 arch = "mace_mp"
 model = "./data/MACE-matpes-r2scan-omat-ft.model"
-atoms.calc = choose_calculator(architecture=arch, model=model, precision=precsn, device=device)
+atoms.calc = choose_calculator(arch=arch, model=model, precision=precsn, device=device)
 
 mask=[1,1,1,1,1,1]
 

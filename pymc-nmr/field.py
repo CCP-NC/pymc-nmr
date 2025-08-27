@@ -104,9 +104,9 @@ class Field:
         try:
 
             if self.dispersion == False:
-                self.janCalc = choose_calculator(architecture=self.arch, model=self.model, precision=self.precision, device=self.device)
+                self.janCalc = choose_calculator(arch=self.arch, model=self.model, precision=self.precision, device=self.device)
             else:
-                self.janCalc = choose_calculator(architecture=self.arch, model=self.model, precision=self.precision, device=self.device, calc_kwargs={'dispersion' : True})
+                self.janCalc = choose_calculator(arch=self.arch, dispersion=True, model=self.model, precision=self.precision, device=self.device)
         except Exception as e:
             print(f"{e} whilst trying to load {self.model}\n")
             exit()
