@@ -1,0 +1,25 @@
+[project]
+name = "pymc-nmr"
+version = "0.0.1"
+authors = [
+  { name="John Purton", email="john.purton@stfc.ac.uk" },
+]
+description = "MC style routines to find configurations to weight calculated NMR"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+#license = "MIT"
+#license-files = ["LICEN[CS]E*"]
+
+[project.urls]
+Homepage = "https://gitlab.stfc.ac.uk/jap93/pymc-nmr"
+Issues = "https://gitlab.stfc.ac.uk/jap93/pymc-nmr/-/issues"
+
+[build-system]
+requires = ["uv_build >= 0.7.19, <0.9.0"]
+build-backend = "uv_build"
+#requires = ["poetry-core>=2.0.0,<3.0.0"]
+#build-backend = "poetry.core.masonry.api"
