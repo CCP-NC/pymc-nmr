@@ -1,7 +1,7 @@
 #determines whether an energy calculated within pymc-nmr is the same as that from ase
 #this checks some of the functionality on Field, Config, Species
 import sys
-sys.path.insert(1, '../pymc-nmr')
+sys.path.insert(1, '../src/pymc-nmr')
 
 from ase.filters import UnitCellFilter
 from ase import Atoms

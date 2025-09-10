@@ -46,20 +46,35 @@ In out limited experience, this the basin hooping method is more efficient than 
 2. Installation
 ===============
 
-It is impossible to define how to setup the program as many computer systems are slightly different, especially clusters. However, the program is written in python and some guidelines are as follows.
+The easiest way to install the pymc-nmr package is to use the uv package manager. the installation instructions and guides can be found `here`_ .
+
+.. _here: https://docs.astral.sh/uv/getting-started/
+
+The program can be installed with ::
+   uv pip install -r pyproject.toml 
+
+It is also possible to set the program up manually using pip. However it is difficult to define how to setup the program as many computer systems are slightly different, especially clusters. However, the program is written in python and some guidelines are as follows.
 It is likely that you need to create a python environment following the python `documentation`_ . 
 
 .. _documentation: https://docs.python.org/3/library/venv.html
 
-External libraries required are `NUMPY`_, `MACE`_, `ASE`_ and `_JANUS-CORE`_ (and their dependecies). In addition libraries to satisfy the ASE calculator 
+External libraries required are `NUMPY`_, `MACE`_, `ASE`_, `JANUS`_,  `DFTD3`_ and  `PYTEST`_ (and their dependecies). In addition libraries to satisfy the ASE calculator 
 or MLIP potentials may be necessary. (if you want to run the tests then pytest also needs to be installed).
 
 .. _NUMPY: https://numpy.org/
 .. _MACE: https://github.com/ACEsuit/mace
 .. _ASE: https://wiki.fysik.dtu.dk/ase/
-.. _JANUS-CORE: https://github.com/stfc/janus-core
+.. _JANUS: https://github.com/stfc/janus-core
+.. _DFTD3: https://github.com/dftd3
+.. _PYTEST: https://docs.pytest.org/en/stable/
 
 Once this is complete the program can be run using the command *python3 /path/to/prog/monte.py*.
+
+A user guide exists in the docs folder. To creat a set of html pages run ::
+
+   sphinx-build -M html ./source ./build
+
+Tests are in the tests folder abd are in pytest format.
 
 =========================
 3. How to run the program
@@ -375,8 +390,25 @@ The configurations are written to the following files (all use extended xyz)
 - archive.xyz (MC and basin hopping) if activated and periodically dump the structure to the file. It is overwritten unless the *restart* keyword is used.
 - restart.xyz (all modes) the final configuration and should be copied to basin.xyz to continue the calculation
 - accepted.xyz (basin hopping). If a configuration is accepted, even by Metropolis sampling, then the configuration is written (**NB** this file is lways appended
-  to so if you dont want the data from the previous run then you should delete it!)
+to so if you dont want the data from the previous run then you should delete it!)
 - downhill.xyz (basin hopping). if a configuration has a lower energy than the previous configuration then it will be saved. Be aware that the previous accepted structure may not be the lowest energy configuration due to Metropolis-Hastings sampling. The file is also appended to.
+
+==========
+5. Weights
+==========
+
+Included within the python source folder is a script called weights.py which can be used to read in a set of ASE images (Atoms objects) that have precalculated potential energies (in eV).
+The single file of configurations can be specified with the --input option (default: accepted.xyz), the format of the configurations with --format (default: extxyz), output with --output
+(default: weights) and temperature with --temperature (default: 300 K). The weights or population of "defects" for the calculation of NMR spectra are given by the equation
+
+.. math::
+   w_{i} = \frac{exp(\Delta E) / k_{B} T} {\sum exp(\Delta E) / k_{B} T}
+
+where :math:`\Delta E` is the difference in energy between the convex hull minimum and the energy of the configuration. The convex hull minimum is taken as the lowest energy in 
+configuration in the input file.
+
+The output file has five columns. These are the configuration index, potential energy, the energy difference (potential energy minus the potential energy of the minimum), the exponential of this
+and the weight (population) respectively.
 
 =============
 6. References

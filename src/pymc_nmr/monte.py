@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 # 
+
 import random
 import time
 import numpy as np
@@ -143,4 +144,5 @@ def main():
     out_stream.close() #end of simulation
 
 if __name__ == "__main__":
+
     main()

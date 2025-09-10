@@ -1,6 +1,6 @@
 #determines energy of MC swap
 import sys
-sys.path.insert(1, '../pymc-nmr')
+sys.path.insert(1, '../src/pymc-nmr')
 
 from ase.filters import UnitCellFilter
 from ase import Atoms
