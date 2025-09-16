@@ -1,3 +1,7 @@
+"""
+The positions and vectors are used in this module. It is similar to ASE atoms object but much more simple, but it allows the system to have fictional atoms
+which must be at the end of the file. Also it will possibly allow an interface with LAMMPS at a later date.
+"""
 import os
 
 import numpy as np
