@@ -23,8 +23,8 @@ dependencies = [
     "sphinx>=8.1.3",
     "torch>=2.8.0",
 ]
-#license = "MIT"
-#license-files = ["LICEN[CS]E*"]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
 
 [project.urls]
 Homepage = "https://gitlab.stfc.ac.uk/jap93/pymc-nmr"
