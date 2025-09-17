@@ -15,6 +15,7 @@ dependencies = [
     "ase>=3.26.0",
     "dftd3>=1.2.1",
     "janus-core>=0.8.3",
+    "jupyter>=1.1.1",
     "mace>=1.1.2",
     "mace-torch>=0.3.14",
     "numpy>=2.2.6",
