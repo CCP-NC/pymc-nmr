@@ -70,7 +70,7 @@ or MLIP potentials may be necessary. (if you want to run the tests then pytest a
 
 Once this is complete the program can be run using the command *python3 /path/to/prog/monte.py*.
 
-A user guide exists in the docs folder. To creat a set of html pages run ::
+A user guide exists in the docs folder. To creat a set of html pages run (these will be in the build folder) ::
 
    sphinx-build -M html ./source ./build
 
