@@ -4,6 +4,7 @@ Also the files basis.xyz, control and potentials are required in this directory
 
 Many of the tests (e.g. test_1) run on the GPU by default. The line 'device = "cuda"' can be changed to cpu if a GPU/cuda is not available.
 
-test_1: tests whether some of the libraries are installed correctly - ASE, mace model, janus-core, numpy. It simply reads in basis.xyz using ASE
-and calculates an energy.
+test_1: tests whether some of the libraries are installed correctly - ASE, mace model, janus-core, numpy. It simply reads in basis.xyz using ASE and calculates an energy.
+
+test_2: In addition to requirements for test1 a geometry optimisation is undertaken to check that this works.
 

@@ -1,4 +1,4 @@
-#tests whether some of the basics are ok - ASE, mace model, configuration
+#relaxation
 from ase.filters import UnitCellFilter
 from ase import Atoms
 from ase.optimize import BFGS, FIRE, LBFGS
