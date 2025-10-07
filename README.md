@@ -2,19 +2,9 @@
 
 pymc-nmr generates multiple configurations allowing the user to weight calculated NMR energies.
 
-Pymc-nmr has three modes of operation that are based on swap moves. A swap move is where the positions of two atoms, chosen at random, are interchanged.
-For example, the two atoms outlined in red in the figure below.
+Pymc-nmr has three modes of operation that are based on swap moves. A swap move is where the positions of two atoms, chosen at random, are interchanged.The difference in energy of the old (*o*) and new (*n*) cells is calculated and employed within the Metropolis-Hastings sampling. 
 
-.. image:: swap-move.png
-  :width: 400
-
-The difference in energy of the old (*o*) and new (*n*) cells is calculated and employed within the Metropolis-Hastings sampling. Thus the move is accepted with
-the probability
-
-:math:`acc(o \rightarrow n) = min(1, exp(- \beta [E_{n} - E_{o}]))`
-
-
-This first is the standard Monte Carlo method described in the books by (\ :ref:`Allen and Tildesley 1989 <ref-Allen_Tildesley_87>`\ ; \ :ref:`Frenkel and Smit 2002 <ref-Frenkel_Smit>`\ ).
+This first is the standard Monte Carlo method described in the books by Allen and Tildesley  and Frenkel and Smit.
 DL_MONTE. Simulations can be performed in the canonical (:math:`NVT`) ensemble and isobaric-isothermal (:math:`NPT`) (where MC moves attempting variations in 
 the volume of the system are applied). In addition, the swap moves described above can be employed.
 
