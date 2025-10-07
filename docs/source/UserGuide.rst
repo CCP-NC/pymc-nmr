@@ -74,7 +74,13 @@ A user guide exists in the docs folder. To creat a set of html pages run (these 
 
    sphinx-build -M html ./source ./build
 
-Tests are in the tests folder abd are in pytest format.
+Tests are in the tests folder abd are in pytest format. These can be executed with the command ::
+
+   uv run --extra test pytest
+   or
+   uv run pytest -v
+
+However, be warned that the tests use the GPU. If cuda is not installed edit the test files to set the device to cpu.
 
 =========================
 3. How to run the program

@@ -38,3 +38,14 @@ build-backend = "uv_build"
 [tool.uv]
 package = true
 
+[project.optional-dependencies]
+test = [
+    # Test runner
+    "pytest>=8.4.0",
+]
+
+[tool.pytest.ini_options]
+# Configuration for [pytest](https://docs.pytest.org)
+python_files = "test_*.py"
+#addopts = '--cov-report xml'
+pythonpath = ["."]
