@@ -1,7 +1,7 @@
 #grid with cavites
 import numpy as np
 
-from config import Config
+from pymc_nmr.config import Config
 
 class Grid:
 

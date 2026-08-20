@@ -1,99 +1,135 @@
-# read in an ASE database of multiple images with calculated potential energies (the input file must be accepted.xyz).
-# Follows equation 30 in Irea Mosquera-Lois, Sean R. Kavanagh, Johan Klarbring, Kasper Tolborg and Aron Walsh Chem Soc Rev 2023, vol 52, 5812.
-# Once the energies are read in the minimum energy is found and the "defect" energy calculated. The latter energy is used to determine the "population" and weight
-# for use within the calculation of the spectra.
-# NB assumes energies ate in eV.  
+"""Boltzmann population weights for an ensemble of accepted structures.
 
-import numpy as np
+Reads an extended-xyz trajectory of structures with calculated potential
+energies (normally ``accepted.xyz``), finds the minimum energy, and converts
+the relative energies into normalised populations
+
+    w_i = exp(-(E_i - E_min) / kB T) / sum_j exp(-(E_j - E_min) / kB T)
+
+following equation 30 of Mosquera-Lois, Kavanagh, Klarbring, Tolborg and Walsh,
+*Chem. Soc. Rev.* **2023**, 52, 5812. These weights are intended for averaging
+computed NMR parameters over the ensemble.
+
+Energies are assumed to be in eV (the ASE convention used throughout pymc-nmr).
+
+.. warning::
+
+   **Known limitation: the weighting semantics of ``accepted.xyz`` are
+   ambiguous, and this script does not resolve them.**
+
+   ``accepted.xyz`` is appended to on every Metropolis-accepted move, so it is
+   a Markov chain already distributed according to ``exp(-E/kB T_run)`` at the
+   temperature of the run. Applying a Boltzmann factor to those same structures
+   therefore double-counts the energy dependence, giving an effective
+   ``exp(-2 E / kB T)`` if the weighting temperature equals the run
+   temperature.
+
+   Two self-consistent interpretations exist, and you must decide which one
+   your analysis assumes:
+
+   1. *Chain semantics.* Treat ``accepted.xyz`` as an MC trajectory. Ensemble
+      averages should then use uniform weights ``1/N``, and this script should
+      not be used.
+   2. *Pool semantics.* Treat ``accepted.xyz`` as a pool of candidate
+      orderings found by the search. Boltzmann reweighting is then appropriate,
+      but the pool must first be reduced to symmetry-distinct structures and
+      each weighted by its configurational multiplicity. This script performs
+      neither the deduplication nor the multiplicity weighting.
+
+   No deduplication is applied here, so repeated visits to the same basin are
+   counted once per acceptance. Resolve this before quoting ensemble-averaged
+   NMR parameters.
+"""
+
 import argparse
 
-from ase import Atoms
-from ase.io import read, write
-from ase.build.tools import sort
+import numpy as np
+from ase.io import read
+from ase.units import kB
 
-def normalise(v):
-    norm = np.linalg.norm(v)
-    if norm == 0: 
-       return v
-    return v / norm
 
 def get_weights(expon):
-    sum_exp = np.sum(expon)
-    #print("sum ", sum_exp)
-    return expon / sum_exp
+    """Normalise a vector of Boltzmann factors to sum to one."""
+    return expon / np.sum(expon)
+
 
 def main(args=None):
     parser = argparse.ArgumentParser(
-        description=textwrap.dedent(
-            """add otcar relaxation to extended xyz for training."""
+        description=(
+            "Calculate normalised Boltzmann population weights from a "
+            "trajectory of structures with calculated energies (eV). "
+            "See the module docstring for an important caveat on how "
+            "accepted.xyz should be interpreted."
         )
     )
     parser.add_argument(
         "--input",
-        help="configurations + energies. ",
+        help="input trajectory of configurations with energies.",
         type=str,
-        default='accepted.xyz',
+        default="accepted.xyz",
     )
     parser.add_argument(
         "--format",
-        help="input style. ",
+        help="ASE format of the input file.",
         type=str,
-        default='extxyz',
+        default="extxyz",
     )
     parser.add_argument(
         "--output",
-        help="output xyz file name. ",
+        help="output file name for the table of weights.",
         type=str,
         default="weights",
     )
     parser.add_argument(
         "--temperature",
-        help="the temperature used for weight calculation.",
+        help="temperature in K used for the weight calculation.",
         type=np.float64,
         default=300,
     )
 
-    # Parse the args
     args = parser.parse_args(args=args)
-
 
     input_name = args.input
     output_name = args.output
-    format = args.format
+    input_format = args.format
     temperature = args.temperature
 
-    BOLTZMANN = .00008617333262145 # in  eV
-    beta = 1.0 / (temperature * BOLTZMANN)
+    if temperature <= 0.0:
+        parser.error("--temperature must be greater than zero.")
 
-    #read in all the frames in a list of atoms objects
-    dataset = read(input_name, format=format, index=":")
+    beta = 1.0 / (temperature * kB)
 
+    # read in all the frames as a list of atoms objects
+    dataset = read(input_name, format=input_format, index=":")
     nframes = len(dataset)
 
     energies = np.zeros(nframes, dtype=np.float64)
-    expon = np.zeros(nframes, dtype=np.float64)
-    weights = np.zeros(nframes, dtype=np.float64)
-
     for i in range(nframes):
-        energies[i] = dataset[i].get_potential_energy() 
+        energies[i] = dataset[i].get_potential_energy()
 
     min_eng = np.min(energies)
     print("the minimum energy ", min_eng)
 
-    for i in range(nframes):
-        #expon[i] = np.exp(-(energies[i] * beta), dtype=np.float64)
-        expon[i] = np.exp(-((energies[i]-min_eng) * beta), dtype=np.float64)
+    # Subtracting the minimum energy before exponentiating is numerically
+    # essential: exp(-E*beta) for raw MLIP energies (thousands of eV) underflows.
+    expon = np.exp(-(energies - min_eng) * beta)
 
-    #calculate the weights for the spectra
+    # calculate the weights for the spectra
     weights = get_weights(expon)
 
-    out_io = open(output_name, "w")
-    for i in range(nframes):
-        if weights[i] > 1.0e-6:
-            out_io.write(f" {i}  {energies[i]}  {energies[i]-min_eng}   {expon[i]}   {weights[i]} \n")
+    # Rows with negligible weight are omitted, so the printed column does not
+    # sum to exactly one; the reported total below is over all frames.
+    with open(output_name, "w") as out_io:
+        out_io.write("# frame  energy_eV  relative_energy_eV  boltzmann_factor  weight\n")
+        for i in range(nframes):
+            if weights[i] > 1.0e-6:
+                out_io.write(
+                    f" {i}  {energies[i]}  {energies[i] - min_eng}   "
+                    f"{expon[i]}   {weights[i]} \n"
+                )
 
     print("sum of weights ", np.sum(weights))
 
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     main()

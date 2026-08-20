@@ -1,31 +1,20 @@
-#relaxation
-from ase.filters import UnitCellFilter
-from ase import Atoms
-from ase.optimize import BFGS, FIRE, LBFGS
-from ase.io import read
+"""Geometry relaxation through ASE reaches the reference relaxed energy."""
 
-from janus_core.helpers.mlip_calculators import choose_calculator
-
-import numpy as np
 import pytest
+from ase.filters import UnitCellFilter
+from ase.io import read
+from ase.optimize import LBFGS
+
+from conftest import requires_model
 
 
-atoms = read("basin.xyz")
+@requires_model
+def test_relaxation(calculator):
+    atoms = read("basin.xyz")
+    atoms.calc = calculator
 
-device = "cuda"
-precsn = "float64"
-arch = "mace_mp"
-model = "./data/MACE-matpes-r2scan-omat-ft.model"
-atoms.calc = choose_calculator(arch=arch, model=model, precision=precsn, device=device)
+    mask = [1, 1, 1, 1, 1, 1]
+    converged = LBFGS(UnitCellFilter(atoms, mask=mask)).run(fmax=1.0e-3, steps=1000)
 
-mask=[1,1,1,1,1,1]
-
-flag = LBFGS(UnitCellFilter(atoms, mask=mask)).run(fmax=1.0e-3, steps=1000)
-
-assert flag == True
-
-energy = atoms.get_potential_energy()
-
-assert energy == pytest.approx(-2205.071010)
-
-print(energy)
+    assert converged
+    assert atoms.get_potential_energy() == pytest.approx(-2205.071010)

@@ -5,13 +5,18 @@ import numpy as np
 from ase.filters import UnitCellFilter
 from ase import Atoms
 from ase.optimize import BFGS, FIRE, LBFGS
-from ase.md import VelocityVerlet, langevin
+from ase.md import langevin
 from ase.units import fs
 
 from janus_core.helpers.mlip_calculators import choose_calculator
 
-from energy import Energy
-from species import Species
+from pymc_nmr.species import Species, Element
+
+# Returned by calculate_energy_relax when a geometry relaxation fails to
+# converge. Deliberately far above any physical energy so that a move towards
+# such a state is rejected by the Metropolis test.
+RELAX_FAILED_ENERGY = 1.0e6
+
 
 class Field:
 
@@ -28,6 +33,15 @@ class Field:
         self.dispersion = False # flag to indicate dispersion calculation
 
         self.first_setup = True # flag if multiple calls are carried out to prevent further setup+
+        self.aux_log = None  # path for ASE optimizer/MD step log; None disables it.
+
+    def load_from_schema(self, cfg):
+        self.arch = cfg.potential.arch
+        self.model = cfg.potential.model
+        self.device = cfg.potential.device
+        self.precision = cfg.potential.precision
+        self.dispersion = cfg.potential.dispersion
+        self.species = True
 
     def readPotential(self, in_stream, out_stream, spec: Species):
         """
@@ -97,10 +111,6 @@ class Field:
             print("a model name is required")
             exit(-1)
 
-        if self.species == None:
-            print("the spcies must be provided")
-            exit(-1)
-        
         try:
 
             if self.dispersion == False:
@@ -135,18 +145,14 @@ class Field:
             the final energy in eV
         """
         
-        total_energy = Energy()
-
         if wrap:
             atoms.wrap()
         
         atoms.calc = self.janCalc
 
-        total_energy.totalEnergy = atoms.get_potential_energy()
-        
-        return total_energy
+        return float(atoms.get_potential_energy())
 
-    def calculate_energy_relax(self, atoms: Atoms, relmethod, relsteps, reltol, relstyle, wrap):
+    def calculate_energy_relax(self, atoms: Atoms, relmethod, relsteps, reltol, relstyle, wrap, out_stream=None):
         """
         The subroutine is a wrapper around ASE energy/force minimisation routines
 
@@ -177,8 +183,6 @@ class Field:
             the final energy in eV on a valid minimisation else a very high energy is sent back
         """
         
-        total_energy = Energy()
-
         if relstyle == "conv":
             mask=[0,0,0,0,0,0]
         elif relstyle == "cona":
@@ -190,24 +194,52 @@ class Field:
             atoms.wrap()
        
         atoms.calc = self.janCalc
-        
+
+        # ponytail: send optimizer step details to aux log when configured, else suppress them.
+        # ASE's Dynamics only writes logfile on comm.rank 0 when given a path string,
+        # so open the file ourselves and pass the handle to keep per-rank logs independent.
+        if self.aux_log:
+            logfile = open(self.aux_log, "a")
+        else:
+            logfile = None
         if relmethod == "lbfgs":
-            flag = LBFGS(UnitCellFilter(atoms, mask=mask)).run(fmax=reltol, steps=relsteps)
+            flag = LBFGS(UnitCellFilter(atoms, mask=mask), logfile=logfile).run(fmax=reltol, steps=relsteps)
         elif relmethod == "fire":
-            flag = FIRE(UnitCellFilter(atoms, mask=mask)).run(fmax=reltol, steps=relsteps)
+            flag = FIRE(UnitCellFilter(atoms, mask=mask), logfile=logfile).run(fmax=reltol, steps=relsteps)
         elif relmethod == "bfgs":
-            flag = BFGS(UnitCellFilter(atoms, mask=mask)).run(fmax=reltol, steps=relsteps)
+            flag = BFGS(UnitCellFilter(atoms, mask=mask), logfile=logfile).run(fmax=reltol, steps=relsteps)
         else:
             print("unrecognised relaxation method")
             exit()
 
         if flag:
-            total_energy.totalEnergy = atoms.get_potential_energy()
-            #print("field final energy ", atoms.get_potential_energy())
+            if logfile is not None:
+                logfile.close()
+            return float(atoms.get_potential_energy())
         else:
-            total_energy.totalEnergy = 1.0e6
-        
-        return total_energy
+            if logfile is not None:
+                logfile.close()
+            # The relaxation did not reach fmax within relsteps. A sentinel
+            # energy is returned so the caller treats the move as hopeless.
+            #
+            # WARNING: this sentinel is a finite number, so it flows into the
+            # Metropolis test and into the statistics like any other energy. If
+            # *both* the old and new states are unconverged their difference is
+            # zero, and the move is then accepted unconditionally. A run whose
+            # relaxations routinely fail therefore shows a ~100% acceptance rate
+            # and meaningless energies. Say so loudly rather than hiding it.
+            message = (
+                f"*** WARNING: relaxation failed to converge to fmax={reltol} "
+                f"within {relsteps} steps; returning sentinel energy {RELAX_FAILED_ENERGY:.1e} eV. "
+                "Energies and acceptance ratios from this step are not physical. "
+                "Increase relax.steps or loosen relax.tol.\n"
+            )
+            if out_stream is not None:
+                out_stream.write(message)
+                out_stream.flush()
+            else:
+                print(message)
+            return RELAX_FAILED_ENERGY
     
     def run_md(self, atoms: Atoms, timestep, mdtemperature_K, mdfriction, mdsteps, wrap):
         """
@@ -240,19 +272,24 @@ class Field:
         total_energy : float
             the final energy in eV 
         """
-        total_energy = Energy()
-
         if wrap:
             atoms.wrap()
         
         atoms.calc = self.janCalc
 
         #dyn = VelocityVerlet(atoms, timestep=2.0 * fs, temperature_K=1000)
-        dyn = langevin.Langevin(atoms, timestep=timestep, temperature_K=mdtemperature_K, friction=mdfriction)
+        # ponytail: send MD step details to aux log when configured, else suppress them.
+        # ASE's Dynamics only writes logfile on comm.rank 0 when given a path string,
+        # so open the file ourselves and pass the handle to keep per-rank logs independent.
+        if self.aux_log:
+            logfile = open(self.aux_log, "a")
+        else:
+            logfile = None
+        dyn = langevin.Langevin(atoms, timestep=timestep, temperature_K=mdtemperature_K, friction=mdfriction, logfile=logfile)
         dyn.run(mdsteps)
+        if logfile is not None:
+            logfile.close()
 
-        total_energy.totalEnergy = atoms.get_potential_energy()
-        
-        return total_energy
+        return float(atoms.get_potential_energy())
 
     

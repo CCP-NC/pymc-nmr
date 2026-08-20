@@ -1,8 +1,0 @@
-species 4
-K 0.0 0.0 13
-Al 0.0 0.0 13
-Si 0.0 0.0 14
-O 0.0 0.0 8
-model ./data/MACE-matpes-r2scan-omat-ft.model
-device cpu
-close

@@ -7,10 +7,10 @@ import sys
 
 from datetime import datetime
 
-from config import Config
-from species import Species
-from field import Field
-from grid import Grid
+from pymc_nmr.config import Config
+from pymc_nmr.species import Species
+from pymc_nmr.field import Field
+from pymc_nmr.grid import Grid
 
 # routine that uses cavity bias style to put K close to AL
 def main():

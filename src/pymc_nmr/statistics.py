@@ -3,9 +3,8 @@ import numpy as np
 import math
 
 from typing import List
-from species import Species  
-from energy import Energy
-from config import Config
+from pymc_nmr.species import Species  
+from pymc_nmr.config import Config
 
 """
     
@@ -21,29 +20,10 @@ from config import Config
     //
     """
 def sclsum(n, a, i):
-
-    k = 0
-    sclsum = 0.0
-
-    for j in range(n):
-        sclsum = sclsum + a[k]
-        k = k + i
-  
-    return sclsum
+    return sum(a[:n:i])
 
 def sclsum2(n, m, a, i):
-
-    
-
-    k = 0
-    sclsum = 0.0
-
-    for j in range(n):
-        sclsum = sclsum + a[k][m]
-        k = k + i
-  
-
-    return sclsum
+    return sum(row[m] for row in a[:n:i])
 
 
 
@@ -198,10 +178,10 @@ class Statistics:
         self.m_zum_strs = np.zeros(9)
         self.m_flc_strs = np.zeros(9)
 
-    def sample(self, sysequil: int, iter: int, totalEnergy: Energy, volume: np.float64, vec: np.ndarray, outStream):
+    def sample(self, sysequil: int, iter: int, totalEnergy: float, volume: np.float64, vec: np.ndarray, outStream):
 
-        self.m_stptoteng = totalEnergy.get_total_energy()
-        self.m_stpcfg = 0.0 #totalEnergy.get_total_energy() * volume;
+        self.m_stptoteng = totalEnergy
+        self.m_stpcfg = 0.0 #totalEnergy * volume;
         
         self.m_stpenthalpy = 0.0
         self.m_stppres = 0.0

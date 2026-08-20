@@ -2,13 +2,10 @@
 The positions and vectors are used in this module. It is similar to ASE atoms object but much more simple, but it allows the system to have fictional atoms
 which must be at the end of the file. Also it will possibly allow an interface with LAMMPS at a later date.
 """
-import os
-
 import numpy as np
-from scipy import linalg
 from ase import Atoms
 
-from species import Species, Element
+from pymc_nmr.species import Species, Element
 
 class Config (object):
     """Config class stores attributes relating to the crystal structure
@@ -23,8 +20,6 @@ class Config (object):
         self.numghost = 0
         self.symbol = []
         self.vectors = np.zeros((3,3))
-        self.charge = None
-        self.mass = None
         self.pos = None
         self.label = None
         self.total_energy = 0.0
@@ -41,8 +36,6 @@ class Config (object):
         del self.symbol [:]
         self.pos = None
         self.label = None
-        self.charge = None
-        self.mass = None
 
     def create_atoms_object(self):
         """
@@ -101,8 +94,7 @@ class Config (object):
         #    print("update", self.symbol[i], self.pos[i,:])
     def setup_configuration(self, spec: Species, out_io):
         """
-        Takes a list of the element types and puts the mass and charge on each atom
-        The function also checks that all the species defined in the basin.xyz are present in the
+        The function checks that all the species defined in the basin.xyz are present in the
         element list.
 
         Parameters
@@ -115,8 +107,6 @@ class Config (object):
             output stream
         """
 
-        self.charge = np.zeros(self.natoms, dtype=np.float64)
-        self.mass = np.zeros(self.natoms, dtype=np.float64)
         self.label = np.zeros(self.natoms, dtype=np.int32)
 
         for i in range(self.natoms):
@@ -127,8 +117,6 @@ class Config (object):
                 element = spec.get_species(k)
                 if self.symbol[i] == element.name:
                     self.label[i] = k 
-                    self.charge[i] = element.charge
-                    self.mass[i] = element.mass
                     found = True
 
             if "ghost" in self.symbol[i]:
@@ -194,8 +182,6 @@ class Config (object):
             c.symbol.append(self.symbol[i])
 
         c.pos = np.zeros((self.natoms,3), dtype=np.float64)
-        c.charge = np.zeros(self.natoms, dtype=np.float64)
-        c.mass = np.zeros(self.natoms, dtype=np.float64)
         c.label = np.zeros(self.natoms, dtype=np.int32)
         
         np.copyto(c.vectors, self.vectors)
@@ -203,8 +189,6 @@ class Config (object):
         c.total_energy = self.total_energy
     
         np.copyto(c.pos, self.pos)
-        np.copyto(c.charge, self.charge)
-        np.copyto(c.mass, self.mass)
 
         np.copyto(c.label, self.label)
 
@@ -289,22 +273,12 @@ class Config (object):
                 swap_list.append(i)
                 shuffle_list.append(i)
 
-        for i in range(self.natoms):
-            if self.symbol[i] == "K" or self.symbol[i] == "ghost":
-                print(i, self.pos[i,:])
-
-        print("unshuffled ", shuffle_list)
-
         np.random.shuffle(shuffle_list)
-        print("shuffled ", shuffle_list)
+
         for i in range(len(swap_list)):
             na = swap_list[i]
             nb = shuffle_list[i]
             self.pos[na,:] = positions[nb,:]
-
-        for i in range(self.natoms):
-            if self.symbol[i] == "K" or self.symbol[i] == "ghost":
-                print(i, self.pos[i,:])
 
     def find_num_types(self, typ: str) -> int:
         """ 
@@ -388,8 +362,6 @@ class Config (object):
         """
         ele = spec.get_species(typ)
         self.symbol[atm] = ele.name
-        self.mass[atm] = ele.mass
-        self.charge[atm] = ele.charge
         self.label[atm] = typ         
         
     def displace_atoms(self, delta):
@@ -874,30 +846,6 @@ class Config (object):
         """
         np.copyto(self.vectors, vec)
 
-    def restore_cell(self, basin, bulks, indx):
-        cell = basin.get_cell()
-
-        if indx == 0:
-            scale = 1.0 / bulks[0]
-            cell[0][0] *= scale
-            bulks[0] = scale
-            bulks[1] = 1.0
-            bulks[2] = 1.0
-        elif indx == 1:
-            scale = 1.0 / bulks[1]
-            cell[1][1] *= scale
-            bulks[0] = 1.0
-            bulks[1] = scale
-            bulks[2] = 1.0
-        else:
-            scale = 1.0 / bulks[2]
-            cell[2][2] *= scale
-            bulks[0] = 1.0
-            bulks[1] = 1.0
-            bulks[2] = scale
-
-        self.scale_positions(basin, bulks)
-        
     def write_config(self, outstream, total_energy=None, iteration = None, time = None):
         """
         writes out a simplified form of the extended xyz format used by ASE

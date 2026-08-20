@@ -1,0 +1,30 @@
+job:
+  structure_path: basin.xyz
+  structure_method: basinhop
+  temperature: 1300.0
+  equil_steps: 750
+  sanity_check_freq: 5000
+
+potential:
+  arch: mace_mp
+  # Download a MACE model and place it here (or give an absolute path).
+  model: MACE-matpes-r2scan-omat-ft.model
+  # Use "cuda" (NVIDIA GPU) for production: it is 1-2 orders of magnitude
+  # faster than "cpu". Use "mps" on Apple Silicon. Check first with:
+  #   python -c "import torch; print(torch.cuda.is_available())"
+  device: cpu
+  precision: float64
+
+monte:
+  steps: 15
+
+moves:
+  swaps:
+    - pairs:
+        - [Al, Si]
+      frequency: 30
+
+relax:
+  method: bfgs
+  steps: 500
+  tol: 0.01

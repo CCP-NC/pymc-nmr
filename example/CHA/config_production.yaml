@@ -1,0 +1,47 @@
+# Realistic, long-running configuration for chabazite (SAR 5, Bronsted H).
+#
+# This is NOT the tutorial config: 200 basin-hopping steps, each with a
+# geometry relaxation of up to 500 steps, is an overnight job on a CPU and is
+# intended to be run with `device: cuda` on a GPU. For a quick first run, work
+# through tutorial1.ipynb, which writes its own short config_tutorial.yaml.
+#
+# Run with:
+#   pymc-nmr --config config_production.yaml --structure basin.xyz
+
+job:
+  structure_path: basin.xyz
+  structure_method: basinhop
+  temperature: 1200.0
+  dump_archive: true
+  archive_frequency: 20
+  save_downhill: true
+  equil_steps: 50
+
+potential:
+  arch: mace_mp
+  model: MACE-matpes-r2scan-omat-ft.model
+  # Use "cuda" (NVIDIA GPU) for production: it is 1-2 orders of magnitude
+  # faster than "cpu". Use "mps" on Apple Silicon. Check first with:
+  #   python -c "import torch; print(torch.cuda.is_available())"
+  device: cpu
+  precision: float64
+  # CPU threads per MPI rank. Set this to the physical cores you actually have
+  # (divided by the number of ranks). 16 suits a workstation; lower it on a
+  # laptop, as oversubscribing cores makes the run slower. Ignored on GPU.
+  threads_per_rank: 16
+
+monte:
+  steps: 200
+
+moves:
+  swaps:
+    - pairs:
+        - [Al, Si]
+      counterion: H
+      max_distance: 4.0
+      frequency: 100
+
+relax:
+  method: bfgs
+  steps: 500
+  tol: 0.01
