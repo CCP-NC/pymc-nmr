@@ -3,16 +3,19 @@ import math
 from typing import List
 
 from ase import Atoms
+from ase.units import kB
 
-from energy import Energy
-from field import Field
-from species import Species
-from job_control import JobControl
-from statistics import Statistics, TypeStatistics
-from config import Config
+from pymc_nmr.field import Field
+from pymc_nmr.species import Species
+from pymc_nmr.job_control import JobControl
+from pymc_nmr.statistics import Statistics, TypeStatistics
+from pymc_nmr.config import Config
 
-BOLTZMANN = .00008617333262145 # in eV
 EXIT_FAILURE = 1
+
+def print_energy(energy_val: float, box: int, out_stream):
+    out_stream.write(f"\n\n energies of box {box}\n")
+    out_stream.write(f" total (internal) energy      {energy_val:25.15e}\n")
 
 def _scale_displacement(rcp_vector, lat_vector, delta):
 
@@ -169,9 +172,6 @@ class MonteCarlo:
                     out_stream.flush()
                     exit(EXIT_FAILURE)
 
-                if ele1.charge != ele2.charge:
-                    self.chargedSwap = True
-
         # Transmutation of atom positions
         if job.num_transmutate_atoms > 0:
             self.numTrans = job.num_transmutate_atoms
@@ -261,14 +261,10 @@ class MonteCarlo:
         self._createMCMoves(job)
         
     def write_statistics(self, numSteps, total_energy, cell_properties, stats_io):
-        stats_io.write(f" {numSteps} ")
-        stats_io.write(f" {total_energy } ")
-        stats_io.write(f" {cell_properties[0]} ")
-        stats_io.write(f" {cell_properties[1]} ")
-        stats_io.write(f" {cell_properties[2]} ")
-        stats_io.write(f" {cell_properties[3]} ")
-        stats_io.write(f" {cell_properties[4]} ")
-        stats_io.write(f" {cell_properties[5]} \n")
+        # ponytail: header only on first write; keeps file self-describing CSV
+        if stats_io.tell() == 0:
+            stats_io.write("step,total_energy,a,b,c,alpha,beta,gamma\n")
+        stats_io.write(f"{numSteps},{total_energy},{cell_properties[0]},{cell_properties[1]},{cell_properties[2]},{cell_properties[3]},{cell_properties[4]},{cell_properties[5]}\n")
         stats_io.flush()
 
     def run(self, spec: Species, fld: Field, job: JobControl, stats: Statistics, type_stats: TypeStatistics, basin: Config, numSteps, cycle, restart_iteration, out_stream):
@@ -316,14 +312,14 @@ class MonteCarlo:
        
         volRatio = np.zeros(6, dtype=np.float64)
 
-        totalEnergy = Energy()
-        checkEnergy = Energy()
+        totalEnergy = 0.0
+        checkEnergy = 0.0
 
         # Initiate the statistics
         stats.zero(1000, 0.0, False)
         type_stats.zero_types(1000, spec.get_num_species(), False) 
 
-        beta = 1.0 / (job.temperature * BOLTZMANN)
+        beta = 1.0 / (job.temperature * kB)
     
         out_stream.write(f"\n beta (1/KT) {beta:.8f}\n")
         
@@ -333,20 +329,20 @@ class MonteCarlo:
         totalEnergy = fld.calculate_energy(new_basin, job.wrap)
            
         #totalEnergy.totalEnergy = energy_new.totalEnergy
-        totalEnergy.print_energy(1, out_stream)
+        print_energy(totalEnergy, 1, out_stream)
 
         numSteps = 1
         if job.restart:
             numSteps = restart_iteration
 
         if job.restart == False:
-            archive_io = open("archive.xyz", "w")
-            basin.write_config(archive_io, total_energy=totalEnergy.get_total_energy(), iteration=0)
+            archive_io = open(f"archive{job.rank_suffix}.xyz", "w")
+            basin.write_config(archive_io, total_energy=totalEnergy, iteration=0)
             archive_io.close()
 
             if job.writestats:
-                stats_io = open("stats", "w")
-                self.write_statistics(numSteps, totalEnergy.get_total_energy(), basin.cell_properties(), stats_io)
+                stats_io = open(f"stats{job.rank_suffix}", "w")
+                self.write_statistics(numSteps, totalEnergy, basin.cell_properties(), stats_io)
                 stats_io.close()
 
         while numSteps <= job.mcSteps:
@@ -356,13 +352,13 @@ class MonteCarlo:
             selection = self.mcMoveList[choice]
 
             if selection == 1:
-                self.move_atom(basin, fld, totalEnergy, beta, job.wrap, out_stream)
+                totalEnergy = self.move_atom(basin, fld, totalEnergy, beta, job.wrap, out_stream)
 
             elif selection == 2:
-                self.swapAtoms(basin, fld, totalEnergy, job, beta, out_stream)
+                totalEnergy = self.swapAtoms(basin, fld, totalEnergy, job, beta, out_stream)
 
             elif selection == 3:               
-                 self.move_volume(basin, fld, totalEnergy, spec, job, beta, out_stream)
+                totalEnergy = self.move_volume(basin, fld, totalEnergy, spec, job, beta, out_stream)
 
             stats.sample(job.equilSteps, numSteps, totalEnergy, basin.get_volume(), basin.cell_properties(), out_stream)
             type_stats.sample_types(numSteps, job.equilSteps, basin, spec)
@@ -372,13 +368,13 @@ class MonteCarlo:
                 type_stats.check_point_types(spec, out_stream)
             
             if job.dumpArchive and numSteps % job.archiveFrequency == 0:
-                archive_io = open("archive.xyz", "a")
-                basin.write_config(archive_io, total_energy=totalEnergy.get_total_energy(), iteration=numSteps)
+                archive_io = open(f"archive{job.rank_suffix}.xyz", "a")
+                basin.write_config(archive_io, total_energy=totalEnergy, iteration=numSteps)
                 archive_io.close()
 
             if job.writestats and numSteps % job.writestats_freq == 0:
-                stats_io = open("stats", "a")
-                self.write_statistics(numSteps, totalEnergy.get_total_energy(), basin.cell_properties(), stats_io)
+                stats_io = open(f"stats{job.rank_suffix}", "a")
+                self.write_statistics(numSteps, totalEnergy, basin.cell_properties(), stats_io)
                 stats_io.close()
 
             
@@ -412,23 +408,23 @@ class MonteCarlo:
             #    basin[cycle].samplePositions()
 
             if numSteps % job.sanityCheckFreq == 0: 
-                restart_io = open("restart.xyz", "w")
-                basin.write_config(restart_io, total_energy=totalEnergy.get_total_energy(), iteration=numSteps)
+                restart_io = open(f"restart{job.rank_suffix}.xyz", "w")
+                basin.write_config(restart_io, total_energy=totalEnergy, iteration=numSteps)
                 restart_io.close()
               
                 new_basin = basin.create_atoms_object()
                 checkEnergy = fld.calculate_energy(new_basin, job.wrap)
                 basin.update_from_atoms(new_basin)
 
-                eDiff = checkEnergy.get_total_energy() - totalEnergy.get_total_energy()
+                eDiff = checkEnergy - totalEnergy
 
                 if abs(eDiff) > 1.0e-6:
                     out_stream.write(f"\n sanity check failed on iteration {numSteps} !!!!!!!\n")
-                    out_stream.write(f" total diff {eDiff.totalEnergy:.10e}\n")
+                    out_stream.write(f" total diff {eDiff:.10e}\n")
                 else:
                     out_stream.write(f"\n sanity check passed  on iteration {numSteps} \n")
                         
-                totalEnergy.totalEnergy = checkEnergy.totalEnergy
+                totalEnergy = checkEnergy
 
 
             numSteps += 1
@@ -438,18 +434,17 @@ class MonteCarlo:
         out_stream.write(" *****************************************************************************************************\n")
 
         
-        final_energy = Energy()
         new_basin = basin.create_atoms_object()
         final_energy = fld.calculate_energy(new_basin, job.wrap)
 
-        final_energy.print_energy(0, out_stream)
+        print_energy(final_energy, 0, out_stream)
 
         out_stream.write("\n final sanity check")
         checkEnergy = final_energy - totalEnergy
-        checkEnergy.print_energy(cycle, out_stream)
+        print_energy(checkEnergy, cycle, out_stream)
 
-        restart_io = open("restart.xyz", "w")
-        basin.write_config(restart_io, total_energy=totalEnergy.get_total_energy(), iteration=numSteps)
+        restart_io = open(f"restart{job.rank_suffix}.xyz", "w")
+        basin.write_config(restart_io, total_energy=totalEnergy, iteration=numSteps)
         restart_io.close()
 
         out_stream.write("\n\n *****************************************************************************************************\n")
@@ -483,7 +478,7 @@ class MonteCarlo:
 
     
 
-    def move_atom(self, basin: Config, fld: Field, total_energy: Energy, beta: float, wrap:bool, out_stream):
+    def move_atom(self, basin: Config, fld: Field, total_energy: float, beta: float, wrap:bool, out_stream) -> float:
         """
         The function does a MC translation of the atomic positions. The old and new energies are used within Boltzmann sampling
 
@@ -496,7 +491,7 @@ class MonteCarlo:
         fld : Field
             The container for the energy minimisation using ASE calculator
 
-        totalEnergy : Energy
+        total_energy : float
             The working energy of the cell
 
         beta : float
@@ -516,13 +511,9 @@ class MonteCarlo:
         atm = basin.select_atom()
         
         if atm < 0:
-            return
+            return total_energy
         
-        energy_old = Energy()
-        energy_old.totalEnergy = total_energy.totalEnergy
-        energy_new = Energy()
-        
-        
+        energy_old = total_energy
         
         self.totalAtomMoves += 1
         self.attemptedAtomMoves[typ] += 1
@@ -535,9 +526,9 @@ class MonteCarlo:
         new_basin = basin.create_atoms_object()
         energy_new = fld.calculate_energy(new_basin, wrap)
         
-        deltaV = energy_new.get_total_energy() - energy_old.get_total_energy()
+        deltaV = energy_new - energy_old
         deltaVB = deltaV * beta
-        #print("smove ", energy_old.get_total_energy(), energy_new.get_total_energy(), deltaV, deltaVB)
+        #print("smove ", energy_old, energy_new, deltaV, deltaVB)
         #energyDifference.print_energy(0, out_stream)
         accept = False
         arg = np.random.random()
@@ -554,19 +545,13 @@ class MonteCarlo:
             
         if accept:
             #update the total energy (basin can remain the same)
-            total_energy.totalEnergy = energy_new.totalEnergy
+            total_energy = energy_new
             
             self.noAtomMoves[typ] += 1
             self.successfulAtomMoves += 1
-            #print("accepted ")
-            
-        else:
-            #revert basin back to its old state
-            basin.reject_atom_move(atm, old_pos)
-            #print("rejected")
+        return total_energy
 
-
-    def move_volume(self, basin: Config, fld: Field, totalEnergy: Energy, spec: Species, job: JobControl, beta: float, out_stream):
+    def move_volume(self, basin: Config, fld: Field, totalEnergy: float, spec: Species, job: JobControl, beta: float, out_stream) -> float:
         """
         The function does a MC volume displacement and the atomic positions. The old and new energies are used within Boltzmann sampling
 
@@ -579,7 +564,7 @@ class MonteCarlo:
         fld : Field
             The container for the energy minimisation using ASE calculator
 
-        totalEnergy : Energy
+        totalEnergy : float
             The working energy of the cell
 
         spec : Species
@@ -601,8 +586,7 @@ class MonteCarlo:
 
         betaInv = 1.0 / beta
 
-        oldEnergy = Energy()
-        oldEnergy.totalEnergy = totalEnergy.totalEnergy
+        oldEnergy = totalEnergy
         vol_old = basin.get_volume()
         old_vec = basin.get_vectors()
         old_pos = basin.get_positions()
@@ -632,18 +616,17 @@ class MonteCarlo:
         self.attemptedVolChange[indx] += 1
         self.totalVolChanges[indx] += 1
 
-        new_energy = Energy()
         new_basin = basin.create_atoms_object()
         new_energy = fld.calculate_energy(new_basin, job.wrap)
 
-        deltav = new_energy.get_total_energy() - oldEnergy.get_total_energy()
-        #print("energies", new_energy.get_total_energy(), oldEnergy.get_total_energy(), deltav)
+        deltav = new_energy - oldEnergy
+        #print("energies", new_energy, oldEnergy, deltav)
         arg = beta * (deltav + job.extPressure * (vol_new - vol_old) - (natoms) * betaInv * math.log(vol_new / vol_old))
-        #print ("old ", oldEnergy.get_total_energy(), " new ", new_energy.get_total_energy(), " diff ", deltav, "arg ", math.exp(-arg))
+        #print ("old ", oldEnergy, " new ", new_energy, " diff ", deltav, "arg ", math.exp(-arg))
         rNum = np.random.random()
         
         if rNum < math.exp(-arg):
-            totalEnergy.totalEnergy = new_energy.totalEnergy
+            totalEnergy = new_energy
             
             self.numVolChange[indx] += 1
             self.successful_vol_change[indx] += 1
@@ -651,8 +634,9 @@ class MonteCarlo:
         else:
             basin.set_positions(old_pos)
             basin.set_vectors(old_vec)
+        return totalEnergy
 
-    def swapAtoms(self, basin: Config, fld: Field, totalEnergy: Energy, job: JobControl, beta: np.float64, out_stream):
+    def swapAtoms(self, basin: Config, fld: Field, totalEnergy: float, job: JobControl, beta: np.float64, out_stream) -> float:
         """
         The function does a MC volume displacement and the atomic positions. The old and new energies are used within Boltzmann sampling
 
@@ -665,7 +649,7 @@ class MonteCarlo:
         fld : Field
             The container for the energy minimisation using ASE calculator
 
-        totalEnergy : Energy
+        totalEnergy : float
             The working energy of the cell
 
         job : JobControl object
@@ -687,21 +671,19 @@ class MonteCarlo:
         atm2 = basin.select_atom_of_type(self.swapType2[j])
 
         if atm1 == -1 or atm2 == -1:
-            return
+            return totalEnergy
 
-        old_energy = Energy()
-        old_energy.totalEnergy = totalEnergy.totalEnergy
+        old_energy = totalEnergy
 
         #print("swapping", atm1, atm2, basin.chem_symbols[atm1], basin.chem_symbols[atm2])
         basin.swap_atom_positions(atm1, atm2)
 
-        new_energy = Energy()
         new_basin = basin.create_atoms_object()
         new_energy = fld.calculate_energy(new_basin, job.wrap)
 
-        deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
+        deltaV = new_energy - old_energy
         deltaVB = beta * deltaV
-        #print("swap ", old_energy.get_total_energy(), new_energy.get_total_energy(), deltaV, deltaVB)
+        #print("swap ", old_energy, new_energy, deltaV, deltaVB)
         accept = False
         arg = np.random.random()
         if deltaV < 0.0:
@@ -715,12 +697,13 @@ class MonteCarlo:
                 accept = False
             
         if accept:
-            totalEnergy.totalEnergy = new_energy.totalEnergy
+            totalEnergy = new_energy
             self.successfulSwaps += 1
             #basin.update_from_atoms(new_basin)
 
         else:
             basin.swap_atom_positions(atm1, atm2)
+        return totalEnergy
 
     
  

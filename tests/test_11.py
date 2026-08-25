@@ -1,36 +1,37 @@
-#same as 10 on cpu but with dispersion included via janus and then directly through mace
-from ase.filters import UnitCellFilter
-from ase import Atoms
-from ase.optimize import BFGS, FIRE, LBFGS
+"""Dispersion correction agrees between janus-core and mace-torch directly.
+
+Both routes should produce the same DFT-D3 corrected energy; a difference means
+one of the two is applying the correction differently.
+"""
+
+import pytest
 from ase.io import read
 
-from janus_core.helpers.mlip_calculators import choose_calculator
+from conftest import ARCH, DEVICE, PRECISION, requires_model
 
-from mace.calculators import mace_mp # directly get the mace calculator
 
-import numpy as np
-import pytest
+@requires_model
+def test_dispersion_consistent_between_janus_and_mace(model_path):
+    # janus-core routes the D3 correction through torch-dftd (the "d3" extra),
+    # which is what actually has to be installed here.
+    pytest.importorskip(
+        "torch_dftd",
+        reason="torch-dftd (janus-core's 'd3' extra) is required for the dispersion test",
+    )
 
-try:
-    import dftd3
-except Exception as e:
-            print(f"{e} whilst trying to import dft-d3. Check to see whether it has been installed! \n")
-            exit()
+    from janus_core.helpers.mlip_calculators import choose_calculator
+    from mace.calculators import mace_mp
 
-atoms = read("basin.xyz")
+    atoms = read("basin.xyz")
 
-device = "cpu"
-precsn = "float64"
-arch = "mace_mp"
-model = "./data/MACE-matpes-r2scan-omat-ft.model"
-atoms.calc = choose_calculator(arch=arch, dispersion=True, model=model, precision=precsn, device=device)
-janus_energy = atoms.get_potential_energy()
+    atoms.calc = choose_calculator(
+        arch=ARCH, dispersion=True, model=model_path, precision=PRECISION, device=DEVICE
+    )
+    janus_energy = atoms.get_potential_energy()
 
-atoms.calc = mace_mp(model=model, dispersion=True, default_dtype="float64", device='cpu')
-mace_energy = atoms.get_potential_energy()
+    atoms.calc = mace_mp(
+        model=model_path, dispersion=True, default_dtype=PRECISION, device=DEVICE
+    )
+    mace_energy = atoms.get_potential_energy()
 
-diff_energy = mace_energy - janus_energy
-
-assert diff_energy == pytest.approx(0.0)
-
-print(janus_energy, mace_energy, diff_energy)
+    assert mace_energy - janus_energy == pytest.approx(0.0)

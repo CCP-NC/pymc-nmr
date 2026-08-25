@@ -6,10 +6,19 @@
 Welcome to PYMC-NMR's documentation!
 ====================================
 
+PyMC-NMR generates ensembles of candidate crystal structures — for example the
+possible Si/Al orderings in a zeolite — using Monte Carlo, basin hopping or
+random structure search driven by a machine-learned interatomic potential.
+The resulting structures and energies can then be used to weight computed NMR
+parameters.
+
+If you are new here, start with the :doc:`quickstart`.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
+   quickstart
    UserGuide
 
 

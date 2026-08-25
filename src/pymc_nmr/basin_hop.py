@@ -4,17 +4,20 @@ from typing import List
 
 from ase import Atoms
 from ase.io import write
+from ase.units import kB
 
-from energy import Energy
-from field import Field
-from species import Species
-from config import Config
-from job_control import JobControl
-from statistics import Statistics, TypeStatistics
-from grid import Grid
+from pymc_nmr.field import Field
+from pymc_nmr.species import Species
+from pymc_nmr.config import Config
+from pymc_nmr.job_control import JobControl
+from pymc_nmr.statistics import Statistics, TypeStatistics
+from pymc_nmr.grid import Grid
 
-BOLTZMANN = .00008617333262145 # in eV
 EXIT_FAILURE = 1
+
+def print_energy(energy_val: float, box: int, out_stream):
+    out_stream.write(f"\n\n energies of box {box}\n")
+    out_stream.write(f" total (internal) energy      {energy_val:25.15e}\n")
 
 class BasinHop:
     def __init__(self):
@@ -119,9 +122,6 @@ class BasinHop:
                     out_stream.write(f"\n atom swap type 2 {job.swapType2[j]} not found in species list!\n")
                     out_stream.flush()
                     exit(EXIT_FAILURE)
-
-                if ele1.charge != ele2.charge:
-                    self.chargedSwap = True
         #combined atom swaps
         if job.num_combi_swap_atoms > 0:
             self.numCombiSwaps = job.num_combi_swap_atoms
@@ -258,14 +258,10 @@ class BasinHop:
         self._createMCMoves(job)
 
     def write_statistics(self, numSteps, total_energy, cell_properties, stats_io):
-        stats_io.write(f" {numSteps} ")
-        stats_io.write(f" {total_energy } ")
-        stats_io.write(f" {cell_properties[0]} ")
-        stats_io.write(f" {cell_properties[1]} ")
-        stats_io.write(f" {cell_properties[2]} ")
-        stats_io.write(f" {cell_properties[3]} ")
-        stats_io.write(f" {cell_properties[4]} ")
-        stats_io.write(f" {cell_properties[5]} \n")
+        # ponytail: header only on first write; keeps file self-describing CSV
+        if stats_io.tell() == 0:
+            stats_io.write("step,total_energy,a,b,c,alpha,beta,gamma\n")
+        stats_io.write(f"{numSteps},{total_energy},{cell_properties[0]},{cell_properties[1]},{cell_properties[2]},{cell_properties[3]},{cell_properties[4]},{cell_properties[5]}\n")
         stats_io.flush()
 
     
@@ -312,37 +308,37 @@ class BasinHop:
             output file mc.log stream
         """
 
-        totalEnergy = Energy()
-        checkEnergy = Energy()
+        totalEnergy = 0.0
+        checkEnergy = 0.0
 
         # Initiate the statistics
         stats.zero(1000, 0.0, False)
         type_stats.zero_types(1000, spec.get_num_species(), False) 
 
-        beta = 1.0 / (job.temperature * BOLTZMANN)
+        beta = 1.0 / (job.temperature * kB)
     
         out_stream.write(f"\n beta (1/KT) {beta:.8f}\n")
         
         fld.setup()
 
         new_basin = basin.create_atoms_object()
-        totalEnergy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle, job.wrap)
+        totalEnergy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle, job.wrap, out_stream)
         basin.update_from_atoms(new_basin)
            
-        totalEnergy.print_energy(1, out_stream)
+        print_energy(totalEnergy, 1, out_stream)
 
         numSteps = 1
         if job.restart:
             numSteps = restart_iteration
 
         if job.restart == False:
-            archive_io = open("archive.xyz", "w")
-            basin.write_config(archive_io, total_energy=totalEnergy.get_total_energy(), iteration=0)
+            archive_io = open(f"archive{job.rank_suffix}.xyz", "w")
+            basin.write_config(archive_io, total_energy=totalEnergy, iteration=0)
             archive_io.close()
 
             if job.writestats:
-                stats_io = open("stats", "w")
-                self.write_statistics(numSteps, totalEnergy.get_total_energy(), basin.cell_properties(), stats_io)
+                stats_io = open(f"stats{job.rank_suffix}", "w")
+                self.write_statistics(numSteps, totalEnergy, basin.cell_properties(), stats_io)
                 stats_io.close()
         
         while numSteps <= job.mcSteps:
@@ -352,15 +348,15 @@ class BasinHop:
             selection = self.mcMoveList[choice]
 
             if selection == 1:
-                self.run_md(basin, fld, totalEnergy, job, beta, out_stream)
+                totalEnergy = self.run_md(basin, fld, totalEnergy, job, beta, out_stream)
 
             elif selection == 2:
-                self.swapAtoms_relax(basin, fld, totalEnergy, job, beta, out_stream)
+                totalEnergy = self.swapAtoms_relax(basin, fld, totalEnergy, job, beta, out_stream)
 
             elif selection == 3:
                 self.grd.build_grid(basin) # before overey combi-swap is possibly over-kill
                                            #but I do not know how much they will move on relaxation
-                self.combi_atom_swap_relax(basin, fld, totalEnergy, job, beta, out_stream)
+                totalEnergy = self.combi_atom_swap_relax(basin, fld, totalEnergy, job, beta, out_stream)
 
             #new_basin = basin.create_atoms_object()
             #energy_new = fld.calculate_energy(new_basin)
@@ -376,31 +372,31 @@ class BasinHop:
                 type_stats.check_point_types(spec, out_stream)
                     
             if job.dumpArchive and numSteps % job.archiveFrequency == 0:
-                archive_io = open("archive.xyz", "a")
-                basin.write_config(archive_io, total_energy=totalEnergy.get_total_energy(), iteration=numSteps)
+                archive_io = open(f"archive{job.rank_suffix}.xyz", "a")
+                basin.write_config(archive_io, total_energy=totalEnergy, iteration=numSteps)
                 archive_io.close()
 
             if job.writestats and numSteps % job.writestats_freq == 0:
-                stats_io = open("stats", "a")
-                self.write_statistics(numSteps, totalEnergy.get_total_energy(), basin.cell_properties(), stats_io)
+                stats_io = open(f"stats{job.rank_suffix}", "a")
+                self.write_statistics(numSteps, totalEnergy, basin.cell_properties(), stats_io)
                 stats_io.close()
 
             if numSteps % job.sanityCheckFreq == 0: 
-                restart_io = open("restart.xyz", "w")
-                basin.write_config(restart_io, total_energy=totalEnergy.get_total_energy(), iteration=numSteps)
+                restart_io = open(f"restart{job.rank_suffix}.xyz", "w")
+                basin.write_config(restart_io, total_energy=totalEnergy, iteration=numSteps)
                 restart_io.close()
               
                 new_basin = basin.create_atoms_object()
                 checkEnergy = fld.calculate_energy(new_basin, job.wrap)
                 basin.update_from_atoms(new_basin)
 
-                eDiff = checkEnergy.get_total_energy() - totalEnergy.get_total_energy()
+                eDiff = checkEnergy - totalEnergy
 
                 if abs(eDiff) > 1.0e-6:
                     out_stream.write(f"\n sanity check failed on iteration {numSteps} !!!!!!!\n")
                     out_stream.write(f" total diff {eDiff:.10e}\n")
                         
-                totalEnergy.totalEnergy = checkEnergy.totalEnergy
+                totalEnergy = checkEnergy
 
             numSteps += 1
 
@@ -409,16 +405,16 @@ class BasinHop:
         out_stream.write(" *****************************************************************************************************\n")
 
         
-        final_energy = Energy()
+        final_energy = 0.0
         new_basin = basin.create_atoms_object()
         final_energy = fld.calculate_energy(new_basin, job.wrap)
         basin.update_from_atoms(new_basin)
 
-        final_energy.print_energy(1, out_stream)
+        print_energy(final_energy, 1, out_stream)
 
         out_stream.write("\n final sanity check")
         checkEnergy = final_energy - totalEnergy
-        checkEnergy.print_energy(cycle, out_stream)
+        print_energy(checkEnergy, cycle, out_stream)
 
         out_stream.write("\n\n *****************************************************************************************************\n")
         out_stream.write(" Summary of simulation\n")
@@ -453,14 +449,14 @@ class BasinHop:
         if self.md_runs > 0:
             out_stream.write(f"\n the number of MD runs {self.md_runs}\n")
 
-        restart_io = open("restart.xyz", "w")
-        basin.write_config(restart_io, total_energy=totalEnergy.get_total_energy(), iteration=numSteps)
+        restart_io = open(f"restart{job.rank_suffix}.xyz", "w")
+        basin.write_config(restart_io, total_energy=totalEnergy, iteration=numSteps)
         restart_io.close()
         
         out_stream.flush()
 
 
-    def swapAtoms_relax(self, basin: Config, fld: Field, totalEnergy: Energy, job: JobControl, beta: np.float64, out_stream):
+    def swapAtoms_relax(self, basin: Config, fld: Field, totalEnergy: float, job: JobControl, beta: np.float64, out_stream):
         """
         Swaps two atoms and then uses energy minimisation. The old and new energies are used within Boltzmann sampling
 
@@ -498,33 +494,31 @@ class BasinHop:
         if atm1 == -1 or atm2 == -1:
             return
 
-        old_energy = Energy()
-        old_energy.totalEnergy = totalEnergy.totalEnergy
+        old_energy = totalEnergy
         
         #print("swapping ", atm1, basin.symbol[atm1], atm2, basin.symbol[atm2])
         #print("pos atm1 ", basin.symbol[atm1], basin.pos[atm1,:])
         #print("pos atm2 ", basin.symbol[atm2], basin.pos[atm2,:])
         basin.swap_atom_positions(atm1, atm2)
 
-        new_energy = Energy()
         new_basin = basin.create_atoms_object()
-        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle, job.wrap)
+        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle, job.wrap, out_stream)
         
-        deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
+        deltaV = new_energy - old_energy
         deltaVB = beta * deltaV
-        #print("swap ", old_energy.get_total_energy(), new_energy.get_total_energy()," ", deltaV," ", beta, " ", deltaVB)
+        #print("swap ", old_energy, new_energy," ", deltaV," ", beta, " ", deltaVB)
         accept = False
         arg = np.random.random()
         if arg < np.exp(-deltaVB):
             accept = True
         
         if accept:
-            totalEnergy.totalEnergy = new_energy.totalEnergy
-            write(filename="accepted.xyz", images=new_basin, format="extxyz", append=True)
+            totalEnergy = new_energy
+            write(filename=f"accepted{job.rank_suffix}.xyz", images=new_basin, format="extxyz", append=True)
             if deltaV < 0.0:
                 self.successfulDownSwaps[j] += 1
                 if job.save_downhill:
-                    write(filename="downhill.xyz", images=new_basin, format="extxyz", append=True)
+                    write(filename=f"downhill{job.rank_suffix}.xyz", images=new_basin, format="extxyz", append=True)
             else:
                 self.successfulUpSwaps[j] += 1
             #print("swap accepted")
@@ -532,7 +526,9 @@ class BasinHop:
         else:
             basin.swap_atom_positions(atm1, atm2)
 
-    def combi_atom_swap_relax(self, basin: Config, fld: Field, totalEnergy: Energy, job: JobControl, beta: np.float64, out_stream):
+        return totalEnergy
+
+    def combi_atom_swap_relax(self, basin: Config, fld: Field, totalEnergy: float, job: JobControl, beta: np.float64, out_stream) -> float:
         """
         Swaps two atoms and then uses energy minimisation. A third atom is also moved to a suitable space in the structure/zeolite.
         The old and new energies are used within Boltzmann sampling - it does NOT obey detailed balance
@@ -546,7 +542,7 @@ class BasinHop:
         fld : Field
             The container for the energy minimisation using ASE calculator
 
-        totalEnergy : Energy
+        totalEnergy : float
             The working energy of the cell
 
         job : JobControl
@@ -567,40 +563,38 @@ class BasinHop:
         atm2 = basin.select_atom_of_type(self.combi_swapType2[j])
 
         if atm1 == -1 or atm2 == -1:
-            return
+            return totalEnergy
         
         atm3 = basin.find_closest_atom(atm2, self.combi_swapType3[j])
         #print("original atm2 pos",basin.symbol[atm2], basin.pos[atm2,0], basin.pos[atm2,1], basin.pos[atm2,2])
         #print("closest atm3 pos",basin.symbol[atm3], basin.pos[atm3,0], basin.pos[atm3,1], basin.pos[atm3,2])
         old_pos = basin.get_positions() # so we know where to put it back
 
-        old_energy = Energy()
-        old_energy.totalEnergy = totalEnergy.totalEnergy
+        old_energy = totalEnergy
         
         #print("swapping ", atm1, basin.symbol[atm1], atm2, basin.symbol[atm2])
         #print("pos atm1 ", basin.symbol[atm1], basin.pos[atm1,:])
         #print("pos atm2 ", basin.symbol[atm2], basin.pos[atm2,:])
         self.grid_swap_atom_positions(basin, atm1, atm2, atm3, job.combi_swap_dist)
         
-        new_energy = Energy()
         new_basin = basin.create_atoms_object()
-        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle, job.wrap)
+        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle, job.wrap, out_stream)
         
-        deltaV = new_energy.get_total_energy() - old_energy.get_total_energy()
+        deltaV = new_energy - old_energy
         deltaVB = beta * deltaV
-        #print("swap ", old_energy.get_total_energy(), new_energy.get_total_energy()," ", deltaV," ", beta, " ", deltaVB)
+        #print("swap ", old_energy, new_energy," ", deltaV," ", beta, " ", deltaVB)
         accept = False
         arg = np.random.random()
         if arg < np.exp(-deltaVB):
             accept = True
         
         if accept:
-            totalEnergy.totalEnergy = new_energy.totalEnergy
-            write(filename="accepted.xyz", images=new_basin, format="extxyz", append=True)
+            totalEnergy = new_energy
+            write(filename=f"accepted{job.rank_suffix}.xyz", images=new_basin, format="extxyz", append=True)
             if deltaV < 0.0:
                 self.successfulDownCombiSwaps[j] += 1
                 if job.save_downhill:
-                    write(filename="downhill.xyz", images=new_basin, format="extxyz", append=True)
+                    write(filename=f"downhill{job.rank_suffix}.xyz", images=new_basin, format="extxyz", append=True)
             else:
                 self.successfulUpCombiSwaps[j] += 1
             #print("combi swap accepted")
@@ -608,8 +602,9 @@ class BasinHop:
         else:
             #basin.restore_grid_swap(atm1, atm2)
             basin.set_positions(old_pos)
+        return totalEnergy
         
-    def run_md(self, basin: Config, fld: Field, totalEnergy: Energy, job: JobControl, beta: np.float64, out_stream):
+    def run_md(self, basin: Config, fld: Field, totalEnergy: float, job: JobControl, beta: np.float64, out_stream) -> float:
         """
         MD is used to shake the atoms into new configuration and then uses energy minimisation. 
 
@@ -622,7 +617,7 @@ class BasinHop:
         fld : Field
             The container for the energy minimisation using ASE calculator
 
-        totalEnergy : Energy
+        totalEnergy : float
             The working energy of the cell
 
         job : JobControl
@@ -645,17 +640,17 @@ class BasinHop:
         #run an md simulation
         fld.run_md(new_basin, job.mdtimestep, job.mdtemperature_K, job.mdfriction, job.mdsteps, job.wrap)
 
-        new_energy = Energy()
         #the energy needs to be relaxed to get the "new" energy
-        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle, job.wrap)
+        new_energy = fld.calculate_energy_relax(new_basin, job.relmethod, job.relsteps, job.reltol, job.relstyle, job.wrap, out_stream)
         
-        if new_energy.totalEnergy > 1.0e5:   # ie it has failed to minimisa - this prevents it going into a stupid position
+        if new_energy > 1.0e5:   # ie it has failed to minimisa - this prevents it going into a stupid position
 
             basin.set_positions(old_pos)
         else:
-            totalEnergy.totalEnergy = new_energy.totalEnergy
+            totalEnergy = new_energy
 
             basin.update_from_atoms(new_basin)
+        return totalEnergy
 
     def grid_swap_atom_positions(self, basin: Config, atm1, atm2, atm3, rcut):
         """

@@ -1,6 +1,0 @@
-species 3
-Al 0.0 0.0 13
-Si 0.0 0.0 14
-O 0.0 0.0 8
-model ../models/mace-mpa-0-medium.model
-close

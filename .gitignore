@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Build artefacts
+build/
+dist/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.serena/
+
+# Sphinx
+docs/build/
+docs/source/_static/
+docs/source/_templates/
+
+# Potential files: large binaries, fetch these yourself (see tests/README.md)
+*.model
+
+# Simulation output
+mc.log
+mc_*.log
+*.log
+stats
+out
+restart*.xyz
+accepted*.xyz
+archive*.xyz
+downhill*.xyz
+weights

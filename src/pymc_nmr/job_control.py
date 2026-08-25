@@ -70,6 +70,9 @@ class JobControl:
         self.gridy = 10
         self.gridz = 10
         self.grid_cut = 2.0
+
+        # MPI/parallel parallelisation suffix
+        self.rank_suffix = ""
         
     def write_mc_control(self, out_io):
         """
@@ -234,153 +237,95 @@ class JobControl:
         if self.writestats:
             out_io.write(f"\n energy data will be written to a file every {self.writestats_freq} steps \n")
 
-    def read_job_control(self, in_stream, out_stream):
-        """
-        writes out to a file the control parameters that are pertinent to the MC calculation
-
-        Parameters
-        ----------
-
-        in_stream : io
-            the file stream for reading the data
-
-        out_stream : io
-            the file stream for the writing of errors etc
-        """
+    def load_from_schema(self, cfg):
+        self.num_cycles = cfg.job.num_cycles
+        self.mc_steps = cfg.monte.steps
+        self.mcSteps = cfg.monte.steps
+        self.wrap = cfg.job.wrap
+        self.extPressure = cfg.job.pressure
+        self.temperature = cfg.job.temperature
+        self.maxDistance = cfg.monte.max_distance
+        self.accAtomMoveUpdate = cfg.monte.distance_update_freq
+        self.acceptAtomMoveRatio = cfg.monte.distance_ratio
+        self.acceptVolUpdate = cfg.monte.vol_update_freq
+        self.acceptVolMoveRatio = cfg.monte.vol_ratio
+        self.maxVolDisplacement = cfg.monte.max_vol_displacement
+        self.frozen_types = cfg.job.frozen_types
+        self.sanityCheckFreq = cfg.job.sanity_check_freq
+        self.printFreq = cfg.job.print_freq
+        self.dumpArchive = cfg.job.dump_archive
+        self.archiveFrequency = cfg.job.archive_frequency
+        self.save_downhill = cfg.job.save_downhill
+        self.equilSteps = cfg.job.equil_steps
         
-        while True:
-            line = in_stream.readline()
-            if not line:
-                break
-            out_stream.write(f" input line: {line.strip()}\n")
-            if line[0] == '#':
-                continue
-
-            words = line.split()
-
-            if not words:
-                continue
-
-            keyWord = words[0].lower()
-
-            if keyWord == "steps":
-                self.mcSteps = int(words[1])
-            elif keyWord == "cycles":
-                self.num_cycles = int(words[1])
-            elif keyWord == "pressure":
-                self.extPressure = float(words[1])
-            elif keyWord == "temperature":
-                self.temperature = float(words[1])
-            elif keyWord == "wrap":
-                self.wrap = True
-            elif keyWord == "maxdistance":
-                self.maxDistance = np.float64(words[1])
-            elif keyWord == "distanceupdate":    
-                self.accAtomMoveUpdate = int(words[1])
-            elif keyWord == "distanceratio":   
-                self.acceptAtomMoveRatio = np.float64(words[1])
-            elif keyWord == "maxvolume":
-                self.maxVolDisplacement = np.float64(words[1])
-            elif keyWord == "volupdate":
-                self.acceptVolUpdate = int(words[1])
-            elif keyWord == "volratio":
-                self.acceptVolMoveRatio = np.float64(words[1])
-            elif keyWord == "freeze":
-                num = int(words[1])
-                for _ in range(num):
-                    line = in_stream.readline()
-                    words = self.split(line)
-                    self.frozen_types.append(words[0])
-            elif keyWord == "check":
-                self.sanityCheckFreq = int(words[1])
-            elif keyWord == "print":
-                self.printFreq = int(words[1])
-            elif keyWord == "archive":
-                self.dumpArchive = True
-            elif keyWord == "archivefrequency":
-                self.archiveFrequency = int(words[1])
-            elif keyWord == "equilsteps":
-                self.equilSteps = int(words[1])
-            elif keyWord == "method":
-                self.structure_method = words[1]
-            elif keyWord == "restart":
-                self.restart = True
-            elif keyWord == "savedownhill":
-                self.save_downhill = True
-            elif keyWord == "move":
-                subWord = words[1]
-                if subWord == "atoms":
-                    num = int(words[2])
-                    self.atomMoveFreq = int(words[3])
-                    for _ in range(num):
-                        line = in_stream.readline()
-                        words = line.split()
-                        self.moveTypes.append(words[0])
-                elif subWord == "volume":
-                    self.volMoveFreq = int(words[2])
-                elif subWord == "swap":
-                    self.num_swap_atoms = int(words[2])
-                    self.swapFrequency = int(words[3])
-                    for _ in range(self.num_swap_atoms):
-                        line = in_stream.readline()
-                        words = line.split()
-                        self.swapType1.append(words[0])
-                        self.swapType2.append(words[1])
-                elif subWord == "combiswap":
-                    self.num_combi_swap_atoms = int(words[2])
-                    self.combi_swapFrequency = int(words[3])
-                    self.combi_swap_dist = float(words[4])
-
-                    for _ in range(self.num_combi_swap_atoms):
-                        line = in_stream.readline()
-                        words = line.split()
-                        self.combi_swapType1.append(words[0])
-                        self.combi_swapType2.append(words[1])
-                        self.combi_swapType3.append(words[2])
-                elif subWord == "moldyn":
-                    self.mdMoveFreq = int(words[2])
-                else:
-                    out_stream.write(f"\n move directive not found: {subWord}")
-                    out_stream.flush()
-                    exit()
+        # atom move config
+        self.atomMoveFreq = cfg.monte.atom_move_freq
+        self.moveTypes = cfg.monte.move_types
+        
+        # vol move config
+        self.volMoveFreq = cfg.monte.vol_move_freq
+        # map volMoveSymmetry string to int if needed
+        sym_map = {"cubic": 0, "tetragonal": 1, "orthorhombic": 2, "vectors": 3}
+        self.volMoveSymmetry = sym_map.get(cfg.monte.vol_move_symmetry.lower(), 0)
+        
+        # swap config
+        self.swapType1 = []
+        self.swapType2 = []
+        self.swapFrequency = 0
+        
+        self.combi_swapType1 = []
+        self.combi_swapType2 = []
+        self.combi_swapType3 = []
+        self.combi_swapFrequency = 0
+        self.combi_swap_dist = 3.0
+        
+        for move in cfg.moves.swaps:
+            if move.counterion is not None:
+                self.combi_swapFrequency += move.frequency
+                self.combi_swap_dist = move.max_distance
+                for t1, t2 in move.pairs:
+                    self.combi_swapType1.append(t1)
+                    self.combi_swapType2.append(t2)
+                    self.combi_swapType3.append(move.counterion)
+            else:
+                self.swapFrequency += move.frequency
+                for t1, t2 in move.pairs:
+                    self.swapType1.append(t1)
+                    self.swapType2.append(t2)
                     
-            elif keyWord == "symmetry":
-                subWord = words[1]
-                if subWord == "cubic":
-                    self.volMoveSymmetry = 0
-                elif subWord == "tetragonal":
-                    self.volMoveSymmetry = 1
-                elif subWord == "orthorhombic":
-                    self.volMoveSymmetry = 2
-                elif subWord == "vectors":
-                    self.volMoveSymmetry = 3
-            elif keyWord == "mdtimestep":
-                self.timestep = float(words[1])
-            elif keyWord == "mdtemperature":
-                self.mdtemperature_K = float(words[1])
-            elif keyWord == "mdfriction":
-                self.mdfriction = float(words[1])
-            elif keyWord == "mdsteps":
-                self.mdsteps = int(words[1])
-            elif keyWord == "relmethod":
-                self.relmethod = (words[1].lower())
-            elif keyWord == "relsteps":
-                self.relsteps = int(words[1])
-            elif keyWord == "reltol":
-                self.reltol = float(words[1]) 
-            elif keyWord == "conp":
-                self.relstyle = "conp"
-            elif keyWord == "cona":
-                self.relstyle = "cona"
-            elif keyWord == "conv":
-                self.relstyle = "conv"
-            elif keyWord == "writestats":
-                self.writestats = True
-            elif keyWord == "statsfreq":
-                self.writestats_freq = int(words[1])
-            elif keyWord == "grid":
-                self.gridx = int(words[1])
-                self.gridx = int(words[2])
-                self.gridx = int(words[3])
-                self.grid_cut = float(words[4])
+        self.num_swap_atoms = len(self.swapType1)
+        self.num_combi_swap_atoms = len(self.combi_swapType1)
+
+        # transmutate
+        self.transmutateFrequency = cfg.monte.transmutate_frequency
+        self.mutateType1 = cfg.monte.mutate_types_1
+        self.mutateType2 = cfg.monte.mutate_types_2
+        self.num_transmutate_atoms = len(self.mutateType1)
+        self.transmuteChemPot = cfg.monte.transmute_chem_pot
+
+        self.structure_method = cfg.job.structure_method
+        self.restart = cfg.job.restart
+        self.max_force = cfg.job.max_force
+        self.writestats = cfg.job.writestats
+        self.writestats_freq = cfg.job.writestats_freq
+
+        # md parameters
+        self.mdMoveFreq = cfg.md.move_freq
+        self.mdtimestep = cfg.md.timestep_fs * fs
+        self.mdtemperature_K = cfg.md.temperature_k
+        self.mdfriction = cfg.md.friction_fs / fs
+        self.mdsteps = cfg.md.steps
+
+        # relaxation parameters
+        self.relmethod = cfg.relax.method
+        self.relsteps = cfg.relax.steps
+        self.reltol = cfg.relax.tol
+        self.relstyle = cfg.relax.style
+
+        # grid parameters
+        self.gridx = cfg.grid.x
+        self.gridy = cfg.grid.y
+        self.gridz = cfg.grid.z
+        self.grid_cut = cfg.grid.cut
+
 
